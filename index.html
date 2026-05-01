@@ -3,13 +3,94 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kids Math Game</title>
+  <title>Kids Learning Playground</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
 <div id="app">
-  <div id="main-screen" style="width:100%;display:flex;flex-direction:column;align-items:center;">
+  <div id="home-screen" class="screen screen--home" style="display:flex;">
+    <h1 class="screen-title" id="home-title">Hi there! 👋</h1>
+    <p class="screen-sub">Pick something fun to practice.</p>
+    <div class="tile-grid" role="list">
+      <button type="button" class="subject-tile" id="pick-math" aria-label="Mathematics">
+        <span class="subject-tile-icon" aria-hidden="true">🔢</span>
+        <span class="subject-tile-label">Numbers</span>
+      </button>
+      <button type="button" class="subject-tile" id="pick-spelling" aria-label="Spelling">
+        <span class="subject-tile-icon" aria-hidden="true">🔤</span>
+        <span class="subject-tile-label">Spelling</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="math-setup-screen" class="screen screen--setup" style="display:none;">
+    <h2 class="screen-title">Math time! ➕➖</h2>
+    <p class="screen-sub">Choose how you want to play.</p>
+
+    <fieldset class="setup-fieldset">
+      <legend class="setup-legend">What do you want to practice?</legend>
+      <div class="pick-row" role="group" aria-label="Math practice type">
+        <button type="button" class="pick-btn" id="math-mode-mixed" aria-pressed="true">Both ✨</button>
+        <button type="button" class="pick-btn" id="math-mode-add" aria-pressed="false">Adding ➕</button>
+        <button type="button" class="pick-btn" id="math-mode-sub" aria-pressed="false">Taking away ➖</button>
+      </div>
+    </fieldset>
+
+    <fieldset class="setup-fieldset">
+      <legend class="setup-legend">How tricky should it be?</legend>
+      <div class="pick-row" role="group" aria-label="Difficulty">
+        <button type="button" class="pick-btn" id="math-diff-easy" aria-pressed="false">Easy 🌱</button>
+        <button type="button" class="pick-btn" id="math-diff-medium" aria-pressed="true">Medium ⭐</button>
+        <button type="button" class="pick-btn" id="math-diff-hard" aria-pressed="false">Hard 🚀</button>
+      </div>
+    </fieldset>
+
+    <div class="setup-actions">
+      <button type="button" class="secondary-btn" id="math-back-btn">← Back</button>
+      <button type="button" class="primary-btn" id="math-start-btn">Let’s play! 🎮</button>
+    </div>
+  </div>
+
+  <div id="spelling-setup-screen" class="screen screen--setup spelling-setup" style="display:none;">
+    <h2 class="screen-title">Spelling time! 🔤</h2>
+    <p class="screen-sub">Pick a practice type (like color-coded boards).</p>
+
+    <fieldset class="setup-fieldset">
+      <legend class="setup-legend">Word type</legend>
+      <div class="pick-row" role="group" aria-label="Spelling word type">
+        <button type="button" class="pick-btn spelling-cat-btn" id="spell-cat-cvc" aria-pressed="true">CVC 🌱</button>
+        <button type="button" class="pick-btn spelling-cat-btn" id="spell-cat-blend" aria-pressed="false">Blends 🔗</button>
+        <button type="button" class="pick-btn spelling-cat-btn" id="spell-cat-digraph" aria-pressed="false">Digraphs ✨</button>
+        <button type="button" class="pick-btn spelling-cat-btn" id="spell-cat-mixed" aria-pressed="false">Mixed 🌈</button>
+      </div>
+    </fieldset>
+
+    <p class="screen-hint">Fill in the missing letters. Tap a letter, then a blank space. (Sounds later!)</p>
+
+    <div class="setup-actions">
+      <button type="button" class="secondary-btn" id="spelling-back-btn">← Back</button>
+      <button type="button" class="primary-btn" id="spelling-start-btn">Let’s spell! ✏️</button>
+    </div>
+  </div>
+
+  <div id="spelling-play-screen" class="spelling-play" style="display:none;width:100%;flex-direction:column;align-items:center;">
+    <div class="top-bar">
+      <div class="q-label" id="spelling-q-label">Word 1 of 10</div>
+      <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="spelling-progress-fill" style="width:10%"></div></div>
+    </div>
+    <div class="question-area spelling-question-area">
+      <div class="spelling-prompt" id="spelling-prompt" aria-live="polite">What’s this?</div>
+      <div class="spelling-emoji" id="spelling-emoji" aria-hidden="true">☀️</div>
+      <div class="spelling-slots-row" id="spelling-slots-row" role="group" aria-label="Word letters"></div>
+      <div class="answer-label">Letter bank</div>
+      <div class="spelling-bank" id="spelling-bank" role="group" aria-label="Pick a letter"></div>
+      <div class="feedback-msg" id="spelling-feedback" aria-live="polite"></div>
+      <button class="submit-btn" id="spelling-submit-btn" type="button">That’s my word! ✅</button>
+    </div>
+  </div>
+
+  <div id="main-screen" style="width:100%;display:none;flex-direction:column;align-items:center;">
     <div class="top-bar">
       <div class="q-label" id="q-label">Question 1 of 10</div>
       <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="progress-fill" style="width:10%"></div></div>
@@ -41,6 +122,6 @@
   <div id="end-screen" class="end-screen" style="display:none;"></div>
 </div>
 
-<script src="app.js"></script>
+<script src="app.runtime.js"></script>
 </body>
 </html>

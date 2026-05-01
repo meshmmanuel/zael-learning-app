@@ -13,6 +13,280 @@
   transition: background 0.5s;
 }
 
+.screen {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px 40px;
+  gap: 14px;
+  text-align: center;
+}
+
+.screen-title {
+  font-family: 'Fredoka One', cursive;
+  font-size: clamp(32px, 8vw, 44px);
+  color: rgba(0,0,0,0.78);
+  line-height: 1.15;
+  max-width: 520px;
+}
+
+.screen-sub {
+  font-size: 17px;
+  font-weight: 800;
+  color: rgba(0,0,0,0.58);
+  max-width: 420px;
+  line-height: 1.35;
+}
+
+.tile-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  margin-top: 8px;
+  max-width: 520px;
+}
+
+.subject-tile {
+  border: none;
+  border-radius: 22px;
+  padding: 18px 20px;
+  min-width: 160px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  background: rgba(255,255,255,0.62);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  color: rgba(0,0,0,0.78);
+  transition: transform 0.15s, background 0.15s;
+}
+
+.subject-tile:hover { transform: scale(1.03); background: rgba(255,255,255,0.82); }
+
+.subject-tile--soon {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.subject-tile-icon { font-size: 44px; line-height: 1; }
+.subject-tile-label { font-family: 'Fredoka One', cursive; font-size: 22px; }
+.subject-tile-note { font-size: 13px; font-weight: 800; color: rgba(0,0,0,0.5); text-transform: uppercase; letter-spacing: 0.6px; }
+
+.setup-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: min(100%, 520px);
+}
+
+.setup-legend {
+  font-size: 14px;
+  font-weight: 800;
+  color: rgba(0,0,0,0.56);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+  padding: 0;
+}
+
+.pick-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.pick-btn {
+  border: 3px solid transparent;
+  border-radius: 16px;
+  padding: 12px 16px;
+  min-height: 52px;
+  font-family: 'Fredoka One', cursive;
+  font-size: clamp(17px, 4.5vw, 22px);
+  background: rgba(255,255,255,0.68);
+  color: #222;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  transition: transform 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.pick-btn:hover { transform: scale(1.04); background: rgba(255,255,255,0.88); }
+
+.pick-btn[aria-pressed="true"] {
+  border-color: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.1);
+}
+
+.setup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.primary-btn {
+  border: none;
+  border-radius: 22px;
+  padding: 14px 28px;
+  min-height: 56px;
+  font-family: 'Fredoka One', cursive;
+  font-size: 22px;
+  cursor: pointer;
+  background: rgba(0,0,0,0.34);
+  color: #fff;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  transition: transform 0.15s, background 0.15s;
+}
+
+.primary-btn:hover { background: rgba(0,0,0,0.45); transform: scale(1.03); }
+
+.secondary-btn {
+  border: none;
+  border-radius: 22px;
+  padding: 14px 22px;
+  min-height: 56px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  background: rgba(255,255,255,0.65);
+  color: rgba(0,0,0,0.7);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  transition: transform 0.15s, background 0.15s;
+}
+
+.secondary-btn:hover { background: rgba(255,255,255,0.88); transform: scale(1.02); }
+
+.spelling-setup .spelling-cat-btn#spell-cat-cvc { background: rgba(180, 230, 180, 0.55); }
+.spelling-setup .spelling-cat-btn#spell-cat-blend { background: rgba(170, 210, 255, 0.55); }
+.spelling-setup .spelling-cat-btn#spell-cat-digraph { background: rgba(255, 235, 150, 0.65); }
+.spelling-setup .spelling-cat-btn#spell-cat-mixed { background: rgba(230, 200, 255, 0.5); }
+
+.screen-hint {
+  font-size: 15px;
+  font-weight: 800;
+  color: rgba(0,0,0,0.52);
+  max-width: 420px;
+  line-height: 1.4;
+}
+
+.spelling-play { min-height: 100vh; }
+
+.spelling-question-area { max-width: 440px; }
+
+.spelling-prompt {
+  font-family: 'Fredoka One', cursive;
+  font-size: clamp(22px, 5vw, 28px);
+  color: rgba(0,0,0,0.72);
+  text-align: center;
+}
+
+.spelling-emoji {
+  font-size: clamp(72px, 20vw, 110px);
+  line-height: 1;
+  user-select: none;
+  margin: 8px 0 4px;
+}
+
+.spelling-slots-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin: 14px 0 8px;
+  min-height: 64px;
+}
+
+.spell-slot {
+  min-width: 52px;
+  height: 58px;
+  border-radius: 14px;
+  border: 3px dashed rgba(0,0,0,0.28);
+  background: rgba(255,255,255,0.55);
+  font-family: 'Fredoka One', cursive;
+  font-size: clamp(28px, 7vw, 36px);
+  color: #222;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.spell-slot--filled {
+  border-style: solid;
+  border-color: rgba(0,0,0,0.35);
+  background: rgba(255,255,255,0.85);
+}
+
+.spell-slot--hint {
+  border-style: solid;
+  border-color: rgba(0,0,0,0.22);
+  background: rgba(255,255,255,0.72);
+  cursor: default;
+}
+
+.spell-slot--active {
+  outline: 4px solid #1f6feb;
+  outline-offset: 2px;
+}
+
+.spell-slot--blank {
+  color: rgba(0,0,0,0.35);
+  font-size: clamp(22px, 5vw, 28px);
+}
+
+.spelling-bank {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(255,255,255,0.6);
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  max-width: 420px;
+  width: min(100%, 420px);
+  min-height: 64px;
+}
+
+.spell-bank-letter {
+  min-width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(255,255,255,0.9);
+  font-family: 'Fredoka One', cursive;
+  font-size: 26px;
+  color: #222;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: transform 0.12s, opacity 0.12s;
+}
+
+.spell-bank-letter:hover:not(:disabled) { transform: scale(1.08); }
+
+.spell-bank-letter:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.spell-bank-letter:focus-visible,
+.spell-slot:focus-visible {
+  outline: 4px solid #1f6feb;
+  outline-offset: 2px;
+}
+
 .top-bar { width: 100%; padding: 14px 20px 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .q-label { font-size: 18px; font-weight: 800; color: rgba(0,0,0,0.62); letter-spacing: 0.5px; }
 .progress-track { width: 100%; height: 14px; background: rgba(0,0,0,0.12); border-radius: 99px; overflow: hidden; }
@@ -78,7 +352,11 @@
 .play-again-btn:focus-visible,
 .sound-toggle:focus-visible,
 .sub-animal:focus-visible,
-.add-animal-btn:focus-visible {
+.add-animal-btn:focus-visible,
+.subject-tile:focus-visible,
+.pick-btn:focus-visible,
+.primary-btn:focus-visible,
+.secondary-btn:focus-visible {
   outline: 4px solid #1f6feb;
   outline-offset: 2px;
 }
@@ -86,6 +364,7 @@
 .submit-btn { width: 90%; max-width: 320px; height: 68px; border-radius: 20px; border: none; background: rgba(0,0,0,0.34); color: #fff; font-family: 'Fredoka One', cursive; font-size: 24px; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.15); transition: all 0.15s; letter-spacing: 0.5px; }
 .submit-btn:hover { background: rgba(0,0,0,0.44); transform: scale(1.02); }
 .submit-btn:active { transform: scale(0.97); }
+.submit-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 .feedback-msg { font-family: 'Fredoka One', cursive; font-size: 26px; text-align: center; min-height: 36px; transition: all 0.2s; letter-spacing: 0.5px; }
 .feedback-msg.wrong { color: #a1281f; }
 .feedback-msg.right { color: #1d8a4d; }
@@ -104,5 +383,23 @@
 .play-again-btn { width: 280px; height: 72px; border-radius: 22px; border: none; background: rgba(0,0,0,0.34); color: #fff; font-family: 'Fredoka One', cursive; font-size: 28px; cursor: pointer; box-shadow: 0 4px 20px rgba(0,0,0,0.15); transition: all 0.15s; }
 .play-again-btn:hover { background: rgba(0,0,0,0.45); transform: scale(1.04); }
 
+.end-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: min(100%, 320px);
+  margin-top: 6px;
+}
+
 .confetti-piece { position: fixed; width: 10px; height: 10px; border-radius: 2px; pointer-events: none; z-index: 999; animation: fall linear forwards; }
 @keyframes fall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0} }
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

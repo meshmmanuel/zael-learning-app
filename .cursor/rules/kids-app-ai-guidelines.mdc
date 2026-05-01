@@ -1,0 +1,18 @@
+---
+description: AI guidelines for the kids math app
+alwaysApply: true
+---
+
+# Kids App AI Guidelines
+
+- Keep changes beginner-friendly and avoid over-engineering.
+- Preserve current gameplay behavior unless explicitly asked to change it.
+- Prefer small, incremental edits over broad rewrites.
+- Keep files modular by concern (`config`, `state`, `audio`, `questions`, `dom`, `app`).
+- The shipped entry is `app.runtime.js` so the app runs from `file://`. ES modules (`import`/`export`) only work over `http://` or `https://` unless you add a bundler.
+- Maintain accessibility features (keyboard support, `aria-*`, focus visibility, reduced motion).
+- Use safe browser APIs (guard `localStorage`, audio play failures).
+- Avoid adding heavy dependencies unless requested.
+- Keep copy text kid-friendly and encouraging.
+- When changing UI, ensure mobile-first layout still works.
+- After meaningful edits, run lints and fix introduced issues.
