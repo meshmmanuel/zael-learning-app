@@ -183,18 +183,86 @@
 
 .spelling-question-area { max-width: 440px; }
 
+.toolbar--spelling-settings {
+  justify-content: flex-end;
+  opacity: 0.92;
+}
+
+.sound-toggle--compact {
+  font-size: 13px;
+  padding: 6px 12px;
+}
+
+.spelling-challenge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px 16px;
+  margin-bottom: 4px;
+  border-radius: 24px;
+  background: rgba(255,255,255,0.45);
+  box-shadow: 0 4px 18px rgba(0,0,0,0.06);
+}
+
 .spelling-prompt {
   font-family: 'Fredoka One', cursive;
   font-size: clamp(22px, 5vw, 28px);
   color: rgba(0,0,0,0.72);
   text-align: center;
+  line-height: 1.25;
+  max-width: 340px;
+}
+
+.spelling-task-hint {
+  font-size: 15px;
+  font-weight: 800;
+  color: rgba(0,0,0,0.52);
+  text-align: center;
+  max-width: 320px;
+  line-height: 1.35;
+}
+
+.spell-listen-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 3px solid rgba(13, 71, 161, 0.35);
+  border-radius: 20px;
+  padding: 14px 22px;
+  min-height: 56px;
+  font-family: 'Fredoka One', cursive;
+  font-size: clamp(18px, 4.5vw, 22px);
+  color: #0d47a1;
+  background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(225, 245, 255, 0.92) 100%);
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(13, 71, 161, 0.18);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.spell-listen-btn:hover:not(:disabled) {
+  transform: scale(1.03);
+  box-shadow: 0 6px 20px rgba(13, 71, 161, 0.22);
+}
+
+.spell-listen-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.spell-listen-icon {
+  font-size: 26px;
+  line-height: 1;
 }
 
 .spelling-emoji {
   font-size: clamp(72px, 20vw, 110px);
   line-height: 1;
   user-select: none;
-  margin: 8px 0 4px;
+  margin: 0;
 }
 
 .spelling-slots-row {
@@ -232,7 +300,7 @@
   border-style: solid;
   border-color: rgba(0,0,0,0.22);
   background: rgba(255,255,255,0.72);
-  cursor: default;
+  cursor: pointer;
 }
 
 .spell-slot--active {
@@ -356,7 +424,8 @@
 .subject-tile:focus-visible,
 .pick-btn:focus-visible,
 .primary-btn:focus-visible,
-.secondary-btn:focus-visible {
+.secondary-btn:focus-visible,
+.spell-listen-btn:focus-visible {
   outline: 4px solid #1f6feb;
   outline-offset: 2px;
 }

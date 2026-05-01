@@ -48,6 +48,19 @@
     submit: 'audio/submit.mp3',
   };
 
+  const ALPHA_SOUND_DIR = 'audio/alphasounds/';
+  const ALPHA_SOUND_SRC = (() => {
+    const m = {};
+    for (let i = 0; i < 26; i++) {
+      const c = String.fromCharCode(97 + i);
+      m[c] = `${ALPHA_SOUND_DIR}alphasounds-${c}.mp3`;
+    }
+    m.o = `${ALPHA_SOUND_DIR}alphasounds-o-sh.mp3`;
+    m.p = `${ALPHA_SOUND_DIR}alphasounds-p-2.mp3`;
+    m.u = `${ALPHA_SOUND_DIR}alphasounds-u-sh.mp3`;
+    return m;
+  })();
+
   const STORAGE = { mathPrefs: 'kidsAppV1MathPrefs', spellingPrefs: 'kidsAppV1SpellingPrefs' };
   const LEGACY_BEST_KEY = 'kidsMathV3BestScore';
 
@@ -88,6 +101,8 @@
     spellFilled: [],
     spellBank: [],
     spellPlacements: {},
+    spellListenGen: 0,
+    spellListenPlaying: false,
     mathMode: 'mixed',
     mathDifficulty: 'medium',
     theme: null,
@@ -137,6 +152,8 @@
     spellingBank: document.getElementById('spelling-bank'),
     spellingFeedback: document.getElementById('spelling-feedback'),
     spellingSubmitBtn: document.getElementById('spelling-submit-btn'),
+    spellingSoundToggle: document.getElementById('spelling-sound-toggle'),
+    spellingHearWordBtn: document.getElementById('spelling-hear-word-btn'),
     mathBackBtn: document.getElementById('math-back-btn'),
     mathStartBtn: document.getElementById('math-start-btn'),
     modeMixed: document.getElementById('math-mode-mixed'),
@@ -163,6 +180,7 @@
 
   let audioCtx = null;
   let soundFx = {};
+  let alphaSoundFx = {};
 
   const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 
@@ -426,6 +444,7 @@
   }
 
   function loadSpellQuestion() {
+    state.spellListenGen += 1;
     state.spellBlocked = false;
     state.spellPlacements = {};
     const item = state.spellingWords[state.spellQIndex];
@@ -443,13 +462,14 @@
 
     els.spellingQLabel.textContent = `Word ${state.spellQIndex + 1} of ${SPELLING_TOTAL}`;
     els.spellingProgressFill.style.width = `${((state.spellQIndex + 1) / SPELLING_TOTAL) * 100}%`;
-    els.spellingPrompt.textContent = 'Spell the word!';
+    els.spellingPrompt.textContent = 'What word goes with this picture?';
     els.spellingEmoji.textContent = state.spellEmoji;
     els.spellingFeedback.textContent = '';
     els.spellingFeedback.className = 'feedback-msg';
     renderSpellSlots();
     renderSpellBank();
     updateSpellingSubmitState();
+    updateSpellingHearButton();
   }
 
   function renderSpellSlots() {
@@ -462,8 +482,12 @@
       if (isHint) {
         btn.classList.add('spell-slot--hint');
         btn.textContent = state.spellWord[i];
-        btn.setAttribute('aria-label', `Letter ${state.spellWord[i]}`);
-        btn.disabled = true;
+        btn.setAttribute('aria-label', `Letter ${state.spellWord[i]}, tap to hear`);
+        const hintCh = state.spellWord[i];
+        btn.onclick = () => {
+          if (state.spellBlocked) return;
+          playAlphaSound(hintCh);
+        };
       } else {
         const v = state.spellFilled[i];
         if (v) {
@@ -480,6 +504,7 @@
           if (state.spellBlocked) return;
           if (isHint) return;
           if (!state.spellFilled[idx]) return;
+          playAlphaSound(state.spellFilled[idx]);
           const bid = state.spellPlacements[idx];
           if (bid) {
             const entry = state.spellBank.find((b) => b.id === bid);
@@ -508,6 +533,7 @@
       btn.disabled = entry.used || state.spellBlocked;
       btn.onclick = () => {
         if (state.spellBlocked || entry.used) return;
+        playAlphaSound(entry.ch);
         const emptyIdx = state.spellFilled.findIndex((v, i) => !state.spellRevealMask[i] && v === null);
         if (emptyIdx === -1) {
           playWrongSound();
@@ -516,7 +542,6 @@
         state.spellFilled[emptyIdx] = entry.ch;
         entry.used = true;
         state.spellPlacements[emptyIdx] = entry.id;
-        playSelectSound();
         renderSpellSlots();
         renderSpellBank();
         updateSpellingSubmitState();
@@ -533,6 +558,7 @@
     if (!els.spellingSubmitBtn) return;
     const ready = state.spellFilled.every((c) => c !== null && c !== undefined);
     els.spellingSubmitBtn.disabled = state.spellBlocked || !ready;
+    updateSpellingHearButton();
   }
 
   function checkSpellingAnswer() {
@@ -655,6 +681,112 @@
       a.preload = 'auto';
       soundFx[k] = a;
     });
+  }
+
+  function initAlphaSounds() {
+    alphaSoundFx = {};
+    Object.entries(ALPHA_SOUND_SRC).forEach(([letter, src]) => {
+      const a = new Audio(src);
+      a.preload = 'auto';
+      alphaSoundFx[letter] = a;
+    });
+  }
+
+  function playAlphaSound(letter) {
+    if (!state.soundOn) return;
+    const k = String(letter).toLowerCase();
+    if (!/^[a-z]$/.test(k)) return;
+    const base = alphaSoundFx[k];
+    if (!base) return;
+    const inst = base.cloneNode();
+    inst.play().catch(() => {});
+  }
+
+  /** Plays one letter clip and resolves when it ends (or on error / timeout). */
+  function playAlphaSoundAndWait(letter) {
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        resolve();
+      };
+      if (!state.soundOn) {
+        finish();
+        return;
+      }
+      const k = String(letter).toLowerCase();
+      if (!/^[a-z]$/.test(k)) {
+        finish();
+        return;
+      }
+      const base = alphaSoundFx[k];
+      if (!base) {
+        finish();
+        return;
+      }
+      const inst = base.cloneNode();
+      inst.addEventListener('ended', finish);
+      inst.addEventListener('error', finish);
+      inst.play().catch(finish);
+      setTimeout(finish, 2800);
+    });
+  }
+
+  function getSpellingSoundsInSlotOrder() {
+    const filled = state.spellFilled;
+    if (!filled || !filled.length) return [];
+    const out = [];
+    for (let i = 0; i < filled.length; i++) {
+      const ch = filled[i];
+      if (ch === null || ch === undefined || ch === '') continue;
+      const c = String(ch).toLowerCase().charAt(0);
+      if (/^[a-z]$/.test(c)) out.push(c);
+    }
+    return out;
+  }
+
+  function updateSpellingHearButton() {
+    if (!els.spellingHearWordBtn) return;
+    const busy = state.spellListenPlaying;
+    const off = !state.soundOn;
+    const seq = getSpellingSoundsInSlotOrder();
+    const canPlay = seq.length > 0;
+    els.spellingHearWordBtn.disabled = busy || off || !canPlay;
+    els.spellingHearWordBtn.setAttribute('aria-disabled', busy || off || !canPlay ? 'true' : 'false');
+    els.spellingHearWordBtn.title = off
+      ? 'Turn Sound on in the corner to use this step.'
+      : canPlay
+        ? `Plays your letters in order: ${seq.join(' ').toUpperCase()}`
+        : 'Fill at least one letter first.';
+    els.spellingHearWordBtn.setAttribute(
+      'aria-label',
+      state.spellListenPlaying
+        ? 'Playing your letters'
+        : canPlay
+          ? 'Listen to the letters you have in the word, left to right'
+          : 'Add at least one letter before listening'
+    );
+  }
+
+  async function playSpellWordLetterByLetter() {
+    if (!state.soundOn || state.spellListenPlaying) return;
+    const toPlay = getSpellingSoundsInSlotOrder();
+    if (toPlay.length === 0) return;
+    const genAtStart = state.spellListenGen;
+    state.spellListenPlaying = true;
+    updateSpellingHearButton();
+    try {
+      for (let i = 0; i < toPlay.length; i++) {
+        if (state.spellListenGen !== genAtStart) return;
+        if (!state.soundOn) break;
+        await playAlphaSoundAndWait(toPlay[i]);
+        if (state.spellListenGen !== genAtStart) return;
+      }
+    } finally {
+      state.spellListenPlaying = false;
+      updateSpellingHearButton();
+    }
   }
 
   function playSound(name, fallbackFn) {
@@ -1038,8 +1170,16 @@
   }
 
   function updateSoundToggle() {
-    els.soundToggle.textContent = state.soundOn ? 'Sound: On' : 'Sound: Off';
-    els.soundToggle.setAttribute('aria-pressed', state.soundOn ? 'true' : 'false');
+    const on = state.soundOn ? 'Sound: On' : 'Sound: Off';
+    const pressed = state.soundOn ? 'true' : 'false';
+    if (els.soundToggle) {
+      els.soundToggle.textContent = on;
+      els.soundToggle.setAttribute('aria-pressed', pressed);
+    }
+    if (els.spellingSoundToggle) {
+      els.spellingSoundToggle.textContent = on;
+      els.spellingSoundToggle.setAttribute('aria-pressed', pressed);
+    }
   }
 
   function updateHintToggle() {
@@ -1095,6 +1235,12 @@
     });
   }
 
+  if (els.spellingHearWordBtn) {
+    els.spellingHearWordBtn.addEventListener('click', () => {
+      playSpellWordLetterByLetter();
+    });
+  }
+
   els.mathBackBtn.addEventListener('click', () => {
     playToggleSound();
     pickRandomBg();
@@ -1118,11 +1264,15 @@
     checkAnswer();
   });
 
-  els.soundToggle.addEventListener('click', () => {
+  function onSoundToggleClick() {
     state.soundOn = !state.soundOn;
     updateSoundToggle();
+    updateSpellingHearButton();
     if (state.soundOn) playToggleSound();
-  });
+  }
+
+  els.soundToggle.addEventListener('click', onSoundToggleClick);
+  if (els.spellingSoundToggle) els.spellingSoundToggle.addEventListener('click', onSoundToggleClick);
 
   els.hintToggle.addEventListener('click', () => {
     state.hintOn = !state.hintOn;
@@ -1160,12 +1310,14 @@
   });
 
   initSoundFx();
+  initAlphaSounds();
   loadMathPrefs();
   loadSpellingPrefs();
   syncMathSetupUI();
   syncSpellingSetupUI();
   updateSoundToggle();
   updateHintToggle();
+  updateSpellingHearButton();
   state.activeGame = 'math';
   pickRandomBg();
   showScreen('home');

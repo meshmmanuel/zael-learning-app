@@ -66,7 +66,7 @@
       </div>
     </fieldset>
 
-    <p class="screen-hint">Fill in the missing letters. Tap a letter, then a blank space. (Sounds later!)</p>
+    <p class="screen-hint">Each round: tap <strong>Hear my letters</strong> to hear what you put in the word (left to right), then fix or submit. Letter buttons still play their sound.</p>
 
     <div class="setup-actions">
       <button type="button" class="secondary-btn" id="spelling-back-btn">← Back</button>
@@ -80,8 +80,18 @@
       <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="spelling-progress-fill" style="width:10%"></div></div>
     </div>
     <div class="question-area spelling-question-area">
-      <div class="spelling-prompt" id="spelling-prompt" aria-live="polite">What’s this?</div>
-      <div class="spelling-emoji" id="spelling-emoji" aria-hidden="true">☀️</div>
+      <div class="toolbar toolbar--spelling-settings" aria-label="Sound settings">
+        <button id="spelling-sound-toggle" class="sound-toggle sound-toggle--compact" type="button" aria-pressed="true">Sound: On</button>
+      </div>
+      <div class="spelling-challenge">
+        <div class="spelling-emoji" id="spelling-emoji" aria-hidden="true">☀️</div>
+        <p class="spelling-prompt" id="spelling-prompt" aria-live="polite">Your turn!</p>
+        <button type="button" class="spell-listen-btn" id="spelling-hear-word-btn">
+          <span class="spell-listen-icon" aria-hidden="true">🔊</span>
+          <span class="spell-listen-text">Hear my letters</span>
+        </button>
+        <p class="spelling-task-hint">Hear the letters you picked in order, then submit when you’re ready.</p>
+      </div>
       <div class="spelling-slots-row" id="spelling-slots-row" role="group" aria-label="Word letters"></div>
       <div class="answer-label">Letter bank</div>
       <div class="spelling-bank" id="spelling-bank" role="group" aria-label="Pick a letter"></div>
