@@ -130,6 +130,14 @@
 
   const els = {
     app: document.getElementById('app'),
+    appNavHome: document.getElementById('app-nav-home'),
+    appNavTitle: document.getElementById('app-nav-title'),
+    appModal: document.getElementById('app-modal'),
+    appModalBackdrop: document.getElementById('app-modal-backdrop'),
+    appModalTitle: document.getElementById('app-modal-title'),
+    appModalMessage: document.getElementById('app-modal-message'),
+    appModalCancel: document.getElementById('app-modal-cancel'),
+    appModalConfirm: document.getElementById('app-modal-confirm'),
     homeScreen: document.getElementById('home-screen'),
     mathSetupScreen: document.getElementById('math-setup-screen'),
     spellingSetupScreen: document.getElementById('spelling-setup-screen'),
@@ -181,6 +189,17 @@
   let audioCtx = null;
   let soundFx = {};
   let alphaSoundFx = {};
+
+  let currentRoute = 'home';
+
+  const NAV_TITLE = {
+    home: 'Kids Learning Playground',
+    mathSetup: 'Numbers — Set up',
+    spellingSetup: 'Spelling — Set up',
+    play: 'Numbers — Practice',
+    spellingPlay: 'Spelling — Practice',
+    end: 'Round finished!',
+  };
 
   const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 
@@ -275,6 +294,108 @@
     els.app.style.background = state.bgColor;
   }
 
+  function updateAppNav(screenName) {
+    if (els.appNavTitle) {
+      els.appNavTitle.textContent = NAV_TITLE[screenName] || NAV_TITLE.home;
+    }
+    if (els.appNavHome) {
+      const onDashboard = screenName === 'home';
+      els.appNavHome.disabled = onDashboard;
+      els.appNavHome.setAttribute('aria-hidden', onDashboard ? 'true' : 'false');
+    }
+  }
+
+  /** Themed confirm dialog; returns a Promise (true = confirmed). */
+  function openAppModal(opts) {
+    if (!els.appModal || !els.appModalTitle || !els.appModalMessage || !els.appModalCancel || !els.appModalConfirm) {
+      return Promise.resolve(window.confirm(opts.message || opts.title));
+    }
+
+    return new Promise((resolve) => {
+      const prevOverflow = document.body.style.overflow;
+      const prevFocus = document.activeElement;
+
+      els.appModalTitle.textContent = opts.title;
+      els.appModalMessage.textContent = opts.message;
+      els.appModalConfirm.textContent = opts.confirmLabel || 'OK';
+      els.appModalCancel.textContent = opts.cancelLabel || 'Cancel';
+
+      const focusables = [els.appModalCancel, els.appModalConfirm];
+
+      function cleanup() {
+        els.appModalConfirm.onclick = null;
+        els.appModalCancel.onclick = null;
+        if (els.appModalBackdrop) els.appModalBackdrop.onclick = null;
+        document.body.style.overflow = prevOverflow;
+        document.removeEventListener('keydown', onKey, true);
+        els.appModal.classList.remove('is-open');
+        els.appModal.setAttribute('aria-hidden', 'true');
+        if (prevFocus && typeof prevFocus.focus === 'function') {
+          try {
+            prevFocus.focus();
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      function finish(value) {
+        cleanup();
+        resolve(value);
+      }
+
+      function onKey(e) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          finish(false);
+          return;
+        }
+        if (e.key !== 'Tab') return;
+        const i = focusables.indexOf(document.activeElement);
+        if (e.shiftKey) {
+          if (i <= 0) {
+            e.preventDefault();
+            focusables[focusables.length - 1].focus();
+          }
+        } else if (i === focusables.length - 1 || i === -1) {
+          e.preventDefault();
+          focusables[0].focus();
+        }
+      }
+
+      document.body.style.overflow = 'hidden';
+      els.appModal.classList.add('is-open');
+      els.appModal.setAttribute('aria-hidden', 'false');
+      document.addEventListener('keydown', onKey, true);
+
+      els.appModalConfirm.onclick = () => finish(true);
+      els.appModalCancel.onclick = () => finish(false);
+      if (els.appModalBackdrop) els.appModalBackdrop.onclick = () => finish(false);
+
+      requestAnimationFrame(() => {
+        els.appModalCancel.focus();
+      });
+    });
+  }
+
+  function requestGoHome() {
+    if (currentRoute === 'play' || currentRoute === 'spellingPlay') {
+      openAppModal({
+        title: 'Go home?',
+        message: 'This round will stop. You can start a new one anytime!',
+        confirmLabel: 'Go home 🏠',
+        cancelLabel: 'Keep playing',
+      }).then((ok) => {
+        if (!ok) return;
+        pickRandomBg();
+        showScreen('home');
+      });
+      return;
+    }
+    pickRandomBg();
+    showScreen('home');
+  }
+
   function showScreen(name) {
     const screens = {
       home: els.homeScreen,
@@ -300,6 +421,8 @@
     } else if (name === 'end') {
       screens.end.style.display = 'flex';
     }
+    currentRoute = name;
+    updateAppNav(name);
   }
 
   function genQuestions() {
@@ -633,8 +756,7 @@
     };
     document.getElementById('home-btn').onclick = () => {
       state.activeGame = 'math';
-      pickRandomBg();
-      showScreen('home');
+      requestGoHome();
     };
 
     if (!prefersReducedMotion) launchConfetti(60);
@@ -1142,8 +1264,7 @@
     };
     document.getElementById('home-btn').onclick = () => {
       state.activeGame = 'math';
-      pickRandomBg();
-      showScreen('home');
+      requestGoHome();
     };
 
     if (!prefersReducedMotion) launchConfetti(60);
@@ -1211,8 +1332,7 @@
   if (els.spellingBackBtn) {
     els.spellingBackBtn.addEventListener('click', () => {
       playToggleSound();
-      pickRandomBg();
-      showScreen('home');
+      requestGoHome();
     });
   }
 
@@ -1243,9 +1363,12 @@
 
   els.mathBackBtn.addEventListener('click', () => {
     playToggleSound();
-    pickRandomBg();
-    showScreen('home');
+    requestGoHome();
   });
+
+  if (els.appNavHome) {
+    els.appNavHome.addEventListener('click', () => requestGoHome());
+  }
 
   els.mathStartBtn.addEventListener('click', () => {
     playSubmitSound();

@@ -9,6 +9,20 @@
 <body>
 
 <div id="app">
+  <header class="app-nav" role="banner">
+    <div class="app-nav-inner">
+      <div class="app-nav-side app-nav-side--start">
+        <button type="button" class="app-nav-home" id="app-nav-home" aria-label="Home">
+          <span class="app-nav-home-icon" aria-hidden="true">🏠</span>
+          <span class="app-nav-home-text">Home</span>
+        </button>
+      </div>
+      <p class="app-nav-title" id="app-nav-title">Kids Learning Playground</p>
+      <div class="app-nav-side app-nav-side--end" aria-hidden="true"></div>
+    </div>
+  </header>
+
+  <div class="app-main" id="app-main">
   <div id="home-screen" class="screen screen--home" style="display:flex;">
     <h1 class="screen-title" id="home-title">Hi there! 👋</h1>
     <p class="screen-sub">Pick something fun to practice.</p>
@@ -74,12 +88,13 @@
     </div>
   </div>
 
-  <div id="spelling-play-screen" class="spelling-play" style="display:none;width:100%;flex-direction:column;align-items:center;">
-    <div class="top-bar">
-      <div class="q-label" id="spelling-q-label">Word 1 of 10</div>
-      <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="spelling-progress-fill" style="width:10%"></div></div>
-    </div>
-    <div class="question-area spelling-question-area">
+  <div id="spelling-play-screen" class="screen screen--play spelling-play" style="display:none;">
+    <div class="play-panel">
+      <div class="top-bar">
+        <div class="q-label" id="spelling-q-label">Word 1 of 10</div>
+        <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="spelling-progress-fill" style="width:10%"></div></div>
+      </div>
+      <div class="question-area spelling-question-area">
       <div class="toolbar toolbar--spelling-settings" aria-label="Sound settings">
         <button id="spelling-sound-toggle" class="sound-toggle sound-toggle--compact" type="button" aria-pressed="true">Sound: On</button>
       </div>
@@ -97,15 +112,17 @@
       <div class="spelling-bank" id="spelling-bank" role="group" aria-label="Pick a letter"></div>
       <div class="feedback-msg" id="spelling-feedback" aria-live="polite"></div>
       <button class="submit-btn" id="spelling-submit-btn" type="button">That’s my word! ✅</button>
+      </div>
     </div>
   </div>
 
-  <div id="main-screen" style="width:100%;display:none;flex-direction:column;align-items:center;">
-    <div class="top-bar">
-      <div class="q-label" id="q-label">Question 1 of 10</div>
-      <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="progress-fill" style="width:10%"></div></div>
-    </div>
-    <div class="question-area">
+  <div id="main-screen" class="screen screen--play" style="display:none;">
+    <div class="play-panel">
+      <div class="top-bar">
+        <div class="q-label" id="q-label">Question 1 of 10</div>
+        <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="progress-fill" style="width:10%"></div></div>
+      </div>
+      <div class="question-area">
       <div class="toolbar">
         <button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="true">Sound: On</button>
         <button id="hint-toggle" class="sound-toggle" type="button" aria-pressed="false">Hint: Off</button>
@@ -127,9 +144,29 @@
         <div class="feedback-msg" id="feedback-msg" aria-live="polite"></div>
         <button class="submit-btn" id="submit-btn" type="button">That's my answer! ✅</button>
       </div>
+      </div>
     </div>
   </div>
   <div id="end-screen" class="end-screen" style="display:none;"></div>
+  </div>
+</div>
+
+<div id="app-modal" class="app-modal" aria-hidden="true">
+  <div class="app-modal-backdrop" id="app-modal-backdrop" tabindex="-1"></div>
+  <div
+    class="app-modal-panel"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="app-modal-title"
+    aria-describedby="app-modal-message"
+  >
+    <h2 class="app-modal-title" id="app-modal-title">Go home?</h2>
+    <p class="app-modal-message" id="app-modal-message"></p>
+    <div class="app-modal-actions">
+      <button type="button" class="secondary-btn app-modal-btn" id="app-modal-cancel">Keep playing</button>
+      <button type="button" class="primary-btn app-modal-btn" id="app-modal-confirm">Go home 🏠</button>
+    </div>
+  </div>
 </div>
 
 <script src="app.runtime.js"></script>
