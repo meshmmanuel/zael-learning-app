@@ -2,6 +2,18 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Stop mobile double-tap zoom on controls; pinch-to-zoom still works (better than user-scalable=no). */
+#app,
+#app *,
+#app-modal,
+#app-modal * {
+  touch-action: manipulation;
+}
+
 /* Widen on tablets/desktop; phones stay ~one-column comfortable width. */
 :root {
   --app-content-max: 540px;
