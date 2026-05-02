@@ -4,13 +4,18 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
 }
 
-/* Stop mobile double-tap zoom on controls; pinch-to-zoom still works (better than user-scalable=no). */
-#app,
-#app *,
-#app-modal,
-#app-modal * {
+body {
+  touch-action: manipulation;
+}
+
+/*
+ * touch-action is NOT inherited — every element defaults to `auto` unless set.
+ * iOS/Android only skip double-tap zoom if the target (and often the chain) uses manipulation.
+ */
+body * {
   touch-action: manipulation;
 }
 
