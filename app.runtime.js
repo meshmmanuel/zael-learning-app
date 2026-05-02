@@ -823,44 +823,10 @@
     inst.play().catch(() => {});
   }
 
-  /** Last resort so every slot letter is audible if the MP3 path fails (decode, autoplay, or missing file). */
-  function speakLetterFallback(letter) {
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        done = true;
-        resolve();
-      };
-      if (!state.soundOn) {
-        finish();
-        return;
-      }
-      const syn = window.speechSynthesis;
-      if (!syn || typeof SpeechSynthesisUtterance === 'undefined') {
-        finish();
-        return;
-      }
-      const k = String(letter).toLowerCase();
-      if (!/^[a-z]$/.test(k)) {
-        finish();
-        return;
-      }
-      const u = new SpeechSynthesisUtterance(k);
-      u.rate = 0.92;
-      u.onend = finish;
-      u.onerror = finish;
-      try {
-        syn.speak(u);
-      } catch {
-        finish();
-        return;
-      }
-      setTimeout(finish, 2600);
-    });
-  }
-
-  /** Plays one letter clip and resolves when it ends (or on error / timeout). */
+  /**
+   * Plays one letter MP3 from `audio/alphasounds/` (same preloads as `playAlphaSound`).
+   * Used by “Hear my letters” only—no speech synthesis fallback.
+   */
   function playAlphaSoundAndWait(letter) {
     return new Promise((resolve) => {
       let done = false;
@@ -880,31 +846,16 @@
         finish();
         return;
       }
-      const src = ALPHA_SOUND_SRC[k];
-      if (!src) {
-        speakLetterFallback(k).then(finish);
+      const base = alphaSoundFx[k];
+      if (!base) {
+        finish();
         return;
       }
-      const inst = new Audio(src);
-      inst.preload = 'auto';
-      let usedFallback = false;
-      const onEnded = () => finish();
-      const tryFallback = () => {
-        if (usedFallback) return;
-        usedFallback = true;
-        inst.removeEventListener('ended', onEnded);
-        inst.removeEventListener('error', tryFallback);
-        if (safetyTimer) clearTimeout(safetyTimer);
-        speakLetterFallback(k).then(finish);
-      };
-      inst.addEventListener('ended', onEnded);
-      inst.addEventListener('error', tryFallback);
+      const inst = base.cloneNode();
+      inst.addEventListener('ended', finish);
+      inst.addEventListener('error', finish);
       safetyTimer = setTimeout(() => finish(), 2800);
-      inst.play().catch(() => {
-        inst.removeEventListener('ended', onEnded);
-        inst.removeEventListener('error', tryFallback);
-        tryFallback();
-      });
+      inst.play().catch(() => finish());
     });
   }
 
@@ -952,11 +903,6 @@
     state.spellListenPlaying = true;
     updateSpellingHearButton();
     try {
-      try {
-        window.speechSynthesis?.cancel();
-      } catch {
-        // ignore
-      }
       for (let i = 0; i < toPlay.length; i++) {
         if (state.spellListenGen !== genAtStart) return;
         if (!state.soundOn) break;
