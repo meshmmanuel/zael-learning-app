@@ -627,7 +627,6 @@
           if (state.spellBlocked) return;
           if (isHint) return;
           if (!state.spellFilled[idx]) return;
-          playAlphaSound(state.spellFilled[idx]);
           const bid = state.spellPlacements[idx];
           if (bid) {
             const entry = state.spellBank.find((b) => b.id === bid);
