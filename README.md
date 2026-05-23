@@ -5,7 +5,10 @@ A lightweight browser-based math game for kids.
 ## What it does
 - Home screen to pick **Numbers** (math) or **Spelling**.
 - Math setup: choose practice type (both, adding only, taking away only) and difficulty.
-- Spelling setup: choose **CVC**, **Blends**, **Digraphs**, or **Mixed** — then fill in missing letters with a letter bank (picture + hints). Letter sounds come from `audio/alphasounds/` when **Sound** is on (same toggle as math).
+- Spelling setup: choose **Picture words** or **Arrow words** (follow-the-arrow boards with a middle vowel).
+- Picture spelling: **CVC**, **Blends**, **Digraphs**, or **Mixed** — fill in missing letters with a letter bank (picture + hints).
+- Arrow words: **random** CVC boards each round — follow **colored arrows** from start → middle vowel → end, submit each word, and find every path on the board (3 boards per round).
+- Letter sounds come from `audio/alphasounds/` when **Sound** is on (same toggle as math).
 - Shows 10 questions per round with the same emoji counting interactions as before.
 - Tracks score and best score in local storage (per math setup, with legacy fallback).
 - Spelling best score is saved **per spelling category**.

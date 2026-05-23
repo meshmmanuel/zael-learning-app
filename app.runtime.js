@@ -67,6 +67,122 @@
   const SPELLING_TOTAL = 10;
   const SPELLING_DECOYS = 2;
 
+  const ARROW_COLOR_IDS = ['red', 'green', 'blue', 'yellow', 'black'];
+  const ARROW_BOARDS_PER_ROUND = 3;
+  const ARROW_WORDS_MIN = 4;
+  const ARROW_WORDS_MAX = 5;
+
+  const ARROW_CVC_EXTRA = [
+    'fan', 'ram', 'mat', 'bag', 'mad', 'bat', 'sap', 'car', 'rat', 'lap', 'ran', 'cap', 'tap', 'pan',
+    'red', 'hen', 'net', 'pet', 'wet', 'leg',
+    'sit', 'bin', 'fin', 'dig', 'big', 'fig',
+    'pot', 'hot', 'cop', 'mop', 'top', 'pop',
+    'bug', 'hug', 'mud', 'bus', 'cut', 'nut',
+  ];
+
+  const ARROW_COLORS = {
+    red: { label: 'Red', stroke: '#e53935', light: '#ffcdd2' },
+    green: { label: 'Green', stroke: '#43a047', light: '#c8e6c9' },
+    blue: { label: 'Blue', stroke: '#1e88e5', light: '#bbdefb' },
+    yellow: { label: 'Yellow', stroke: '#f9a825', light: '#fff9c4' },
+    black: { label: 'Black', stroke: '#424242', light: '#e0e0e0' },
+  };
+
+  function getArrowCvcPool() {
+    const seen = new Set();
+    const out = [];
+    const add = (w) => {
+      const word = w.toLowerCase();
+      if (word.length !== 3 || !/^[a-z]{3}$/.test(word) || seen.has(word)) return;
+      seen.add(word);
+      out.push(word);
+    };
+    SPELLING_LISTS.cvc.forEach((item) => add(item.w));
+    ARROW_CVC_EXTRA.forEach(add);
+    return out;
+  }
+
+  function groupCvcByVowel(pool) {
+    const groups = {};
+    pool.forEach((w) => {
+      const vowel = w[1];
+      if (!groups[vowel]) groups[vowel] = [];
+      groups[vowel].push(w);
+    });
+    return groups;
+  }
+
+  function buildArrowPuzzle(center, wordList) {
+    const words = wordList.slice(0, ARROW_WORDS_MAX);
+    const n = words.length;
+    const left = words.map((w) => w[0]);
+    const right = new Array(n);
+    const perm = shuffle([...Array(n).keys()]);
+    perm.forEach((slot, i) => {
+      right[slot] = words[i][2];
+    });
+    const colorOrder = shuffle([...ARROW_COLOR_IDS]);
+    const puzzleWords = words.map((w, i) => ({
+      w,
+      leftIdx: i,
+      rightIdx: perm[i],
+      color: colorOrder[i % colorOrder.length],
+    }));
+    const hint = puzzleWords[0];
+    return {
+      center,
+      hintWord: hint.w,
+      hintColor: hint.color,
+      left,
+      right,
+      words: puzzleWords,
+    };
+  }
+
+  function buildArrowRound() {
+    const groups = groupCvcByVowel(getArrowCvcPool());
+    const vowels = shuffle(
+      Object.keys(groups).filter((v) => groups[v].length >= ARROW_WORDS_MIN)
+    );
+    const boards = [];
+    const used = new Set();
+
+    for (let i = 0; i < ARROW_BOARDS_PER_ROUND; i++) {
+      let vowel = vowels[i];
+      if (!vowel) {
+        vowel = Object.keys(groups).find((v) => groups[v].length >= ARROW_WORDS_MIN);
+      }
+      if (!vowel) break;
+
+      const maxCount = Math.min(ARROW_WORDS_MAX, groups[vowel].length);
+      const count = rnd(ARROW_WORDS_MIN, maxCount);
+      const candidates = shuffle([...groups[vowel]]).filter((w) => !used.has(w));
+      let picked = candidates.slice(0, count);
+      if (picked.length < ARROW_WORDS_MIN) {
+        picked = shuffle([...groups[vowel]]).filter((w) => !used.has(w)).slice(0, count);
+      }
+      if (picked.length < ARROW_WORDS_MIN) continue;
+      picked.forEach((w) => used.add(w));
+      boards.push(buildArrowPuzzle(vowel, picked));
+    }
+
+    while (boards.length < ARROW_BOARDS_PER_ROUND) {
+      const avail = shuffle(
+        Object.keys(groups).filter((v) => groups[v].length >= ARROW_WORDS_MIN)
+      );
+      if (!avail.length) break;
+      const vowel = avail[0];
+      const maxCount = Math.min(ARROW_WORDS_MAX, groups[vowel].length);
+      const count = rnd(ARROW_WORDS_MIN, maxCount);
+      const picked = shuffle([...groups[vowel]]).filter((w) => !used.has(w)).slice(0, count);
+      if (picked.length < ARROW_WORDS_MIN) break;
+      picked.forEach((w) => used.add(w));
+      boards.push(buildArrowPuzzle(vowel, picked));
+    }
+
+    return boards;
+  }
+
   const SPELLING_LISTS = {
     cvc: [
       { w: 'sun', e: '☀️' }, { w: 'cat', e: '🐱' }, { w: 'dog', e: '🐶' }, { w: 'hat', e: '🎩' },
@@ -90,6 +206,7 @@
 
   const state = {
     activeGame: 'math',
+    spellingMode: 'picture',
     spellingCategory: 'cvc',
     spellingWords: [],
     spellQIndex: 0,
@@ -103,6 +220,16 @@
     spellPlacements: {},
     spellListenGen: 0,
     spellListenPlaying: false,
+    arrowPuzzleIndex: 0,
+    arrowPuzzles: [],
+    arrowPickLeftIdx: null,
+    arrowPickRightIdx: null,
+    arrowPickColor: null,
+    arrowFound: [],
+    arrowBlocked: false,
+    arrowScore: 0,
+    arrowListenGen: 0,
+    arrowListenPlaying: false,
     mathMode: 'mixed',
     mathDifficulty: 'medium',
     theme: null,
@@ -142,6 +269,25 @@
     mathSetupScreen: document.getElementById('math-setup-screen'),
     spellingSetupScreen: document.getElementById('spelling-setup-screen'),
     spellingPlayScreen: document.getElementById('spelling-play-screen'),
+    arrowPlayScreen: document.getElementById('arrow-play-screen'),
+    spellModePicture: document.getElementById('spell-mode-picture'),
+    spellModeArrow: document.getElementById('spell-mode-arrow'),
+    spellingCatFieldset: document.getElementById('spelling-cat-fieldset'),
+    spellingSetupHint: document.getElementById('spelling-setup-hint'),
+    spellingStartBtn: document.getElementById('spelling-start-btn'),
+    arrowQLabel: document.getElementById('arrow-q-label'),
+    arrowProgressFill: document.getElementById('arrow-progress-fill'),
+    arrowPrompt: document.getElementById('arrow-prompt'),
+    arrowExample: document.getElementById('arrow-example'),
+    arrowBoard: document.getElementById('arrow-board'),
+    arrowBoardStage: document.getElementById('arrow-board-stage'),
+    arrowPathsSvg: document.getElementById('arrow-paths-svg'),
+    arrowBuilderSlots: document.getElementById('arrow-builder-slots'),
+    arrowFoundList: document.getElementById('arrow-found-list'),
+    arrowFeedback: document.getElementById('arrow-feedback'),
+    arrowSubmitBtn: document.getElementById('arrow-submit-btn'),
+    arrowSoundToggle: document.getElementById('arrow-sound-toggle'),
+    arrowHearWordBtn: document.getElementById('arrow-hear-word-btn'),
     mainScreen: document.getElementById('main-screen'),
     endScreen: document.getElementById('end-screen'),
     pickMath: document.getElementById('pick-math'),
@@ -151,7 +297,6 @@
     spellCatDigraph: document.getElementById('spell-cat-digraph'),
     spellCatMixed: document.getElementById('spell-cat-mixed'),
     spellingBackBtn: document.getElementById('spelling-back-btn'),
-    spellingStartBtn: document.getElementById('spelling-start-btn'),
     spellingQLabel: document.getElementById('spelling-q-label'),
     spellingProgressFill: document.getElementById('spelling-progress-fill'),
     spellingPrompt: document.getElementById('spelling-prompt'),
@@ -198,6 +343,7 @@
     spellingSetup: 'Spelling — Set up',
     play: 'Numbers — Practice',
     spellingPlay: 'Spelling — Practice',
+    arrowPlay: 'Arrow words — Practice',
     end: 'Round finished!',
   };
 
@@ -379,7 +525,7 @@
   }
 
   function requestGoHome() {
-    if (currentRoute === 'play' || currentRoute === 'spellingPlay') {
+    if (currentRoute === 'play' || currentRoute === 'spellingPlay' || currentRoute === 'arrowPlay') {
       openAppModal({
         title: 'Go home?',
         message: 'This round will stop. You can start a new one anytime!',
@@ -402,6 +548,7 @@
       mathSetup: els.mathSetupScreen,
       spellingSetup: els.spellingSetupScreen,
       spellingPlay: els.spellingPlayScreen,
+      arrowPlay: els.arrowPlayScreen,
       play: els.mainScreen,
       end: els.endScreen,
     };
@@ -416,6 +563,8 @@
       screens.spellingSetup.style.display = 'flex';
     } else if (name === 'spellingPlay') {
       screens.spellingPlay.style.display = 'flex';
+    } else if (name === 'arrowPlay') {
+      if (screens.arrowPlay) screens.arrowPlay.style.display = 'flex';
     } else if (name === 'play') {
       screens.play.style.display = 'flex';
     } else if (name === 'end') {
@@ -453,7 +602,16 @@
   }
 
   function bestSpellingScoreKey() {
+    if (state.spellingMode === 'arrow') return 'kidsSpellBest_arrow';
     return `kidsSpellBest_${state.spellingCategory}`;
+  }
+
+  function arrowRoundWordGoal() {
+    return state.arrowPuzzles.reduce((n, p) => n + p.words.length, 0);
+  }
+
+  function currentArrowPuzzle() {
+    return state.arrowPuzzles[state.arrowPuzzleIndex];
   }
 
   function getSpellingBest() {
@@ -478,6 +636,7 @@
       const raw = localStorage.getItem(STORAGE.spellingPrefs);
       if (!raw) return;
       const data = JSON.parse(raw);
+      if (data.mode === 'picture' || data.mode === 'arrow') state.spellingMode = data.mode;
       if (data.category === 'cvc' || data.category === 'blend' || data.category === 'digraph' || data.category === 'mixed') {
         state.spellingCategory = data.category;
       }
@@ -488,21 +647,45 @@
 
   function saveSpellingPrefs() {
     try {
-      localStorage.setItem(STORAGE.spellingPrefs, JSON.stringify({ category: state.spellingCategory }));
+      localStorage.setItem(STORAGE.spellingPrefs, JSON.stringify({
+        mode: state.spellingMode,
+        category: state.spellingCategory,
+      }));
     } catch {
       // ignore
     }
   }
 
   function syncSpellingSetupUI() {
-    const map = {
+    const modeMap = { picture: els.spellModePicture, arrow: els.spellModeArrow };
+    Object.values(modeMap).forEach((btn) => { if (btn) btn.setAttribute('aria-pressed', 'false'); });
+    if (modeMap[state.spellingMode]) modeMap[state.spellingMode].setAttribute('aria-pressed', 'true');
+
+    const catMap = {
       cvc: els.spellCatCvc,
       blend: els.spellCatBlend,
       digraph: els.spellCatDigraph,
       mixed: els.spellCatMixed,
     };
-    Object.values(map).forEach((btn) => { if (btn) btn.setAttribute('aria-pressed', 'false'); });
-    if (map[state.spellingCategory]) map[state.spellingCategory].setAttribute('aria-pressed', 'true');
+    Object.values(catMap).forEach((btn) => { if (btn) btn.setAttribute('aria-pressed', 'false'); });
+    if (catMap[state.spellingCategory]) catMap[state.spellingCategory].setAttribute('aria-pressed', 'true');
+
+    const isArrow = state.spellingMode === 'arrow';
+    if (els.spellingCatFieldset) els.spellingCatFieldset.hidden = isArrow;
+    if (els.spellingSetupHint) {
+      els.spellingSetupHint.textContent = isArrow
+        ? 'Follow the colored arrows: tap the start letter, then the end letter on the same color path. Hear your word, then submit!'
+        : 'Each round: tap Hear my letters to hear what you put in the word (left to right), then fix or submit. Letter buttons still play their sound.';
+    }
+    if (els.spellingStartBtn) {
+      els.spellingStartBtn.textContent = isArrow ? 'Let’s find words! 🔀' : 'Let’s spell! ✏️';
+    }
+  }
+
+  function setSpellingMode(mode) {
+    state.spellingMode = mode;
+    syncSpellingSetupUI();
+    playSelectSound();
   }
 
   function setSpellingCategory(cat) {
@@ -760,6 +943,506 @@
 
     if (!prefersReducedMotion) launchConfetti(60);
     if (state.spellScore === total) playSound('endPerfect', playCelebrationSound);
+    else playSound('endTryAgain', playWrongSound);
+  }
+
+  function startArrowRound() {
+    state.activeGame = 'arrow';
+    saveSpellingPrefs();
+    pickRandomBg();
+    state.arrowPuzzles = buildArrowRound();
+    state.arrowPuzzleIndex = 0;
+    state.arrowScore = 0;
+    showScreen('arrowPlay');
+    loadArrowPuzzle();
+  }
+
+  function clearArrowPicks() {
+    state.arrowPickLeftIdx = null;
+    state.arrowPickRightIdx = null;
+    state.arrowPickColor = null;
+    state.arrowListenGen += 1;
+  }
+
+  function arrowPathForLeftIdx(leftIdx) {
+    const puzzle = currentArrowPuzzle();
+    if (!puzzle) return null;
+    return puzzle.words.find((entry) => entry.leftIdx === leftIdx && !state.arrowFound.includes(entry.w)) || null;
+  }
+
+  function arrowPathForPair(leftIdx, rightIdx) {
+    const puzzle = currentArrowPuzzle();
+    if (!puzzle) return null;
+    return puzzle.words.find(
+      (entry) => entry.leftIdx === leftIdx && entry.rightIdx === rightIdx && !state.arrowFound.includes(entry.w)
+    ) || null;
+  }
+
+  function arrowBuiltWord() {
+    const puzzle = currentArrowPuzzle();
+    if (!puzzle || state.arrowPickLeftIdx === null || state.arrowPickRightIdx === null) return '';
+    const left = puzzle.left[state.arrowPickLeftIdx];
+    const right = puzzle.right[state.arrowPickRightIdx];
+    if (!left || !right) return '';
+    return `${left}${puzzle.center}${right}`;
+  }
+
+  function findArrowWordMatch() {
+    if (state.arrowPickLeftIdx === null || state.arrowPickRightIdx === null || !state.arrowPickColor) return null;
+    const puzzle = currentArrowPuzzle();
+    if (!puzzle) return null;
+    return puzzle.words.find(
+      (entry) => entry.leftIdx === state.arrowPickLeftIdx
+        && entry.rightIdx === state.arrowPickRightIdx
+        && entry.color === state.arrowPickColor
+    ) || null;
+  }
+
+  function arrowColorLabel(colorId) {
+    return (ARROW_COLORS[colorId] && ARROW_COLORS[colorId].label) || colorId;
+  }
+
+  function isArrowPathActive(entry) {
+    return state.arrowPickColor === entry.color
+      && state.arrowPickLeftIdx === entry.leftIdx;
+  }
+
+  function scheduleArrowPathsRedraw() {
+    requestAnimationFrame(() => renderArrowPaths());
+  }
+
+  function loadArrowPuzzle() {
+    const puzzle = currentArrowPuzzle();
+    if (!puzzle) return;
+    state.arrowBlocked = false;
+    state.arrowFound = [];
+    clearArrowPicks();
+
+    const totalBoards = state.arrowPuzzles.length;
+    const goal = puzzle.words.length;
+    els.arrowQLabel.textContent = `Board ${state.arrowPuzzleIndex + 1} of ${totalBoards}`;
+    els.arrowProgressFill.style.width = `${((state.arrowPuzzleIndex + 1) / totalBoards) * 100}%`;
+    els.arrowPrompt.textContent = `Follow the colored arrows and find ${goal} words through “${puzzle.center}”!`;
+    if (els.arrowExample) {
+      if (state.arrowPuzzleIndex === 0 && puzzle.hintWord && puzzle.hintColor) {
+        els.arrowExample.hidden = false;
+        els.arrowExample.textContent = `Example: ${arrowColorLabel(puzzle.hintColor)} path → ${puzzle.hintWord}`;
+      } else {
+        els.arrowExample.hidden = true;
+        els.arrowExample.textContent = '';
+      }
+    }
+    els.arrowFeedback.textContent = '';
+    els.arrowFeedback.className = 'feedback-msg';
+    renderArrowBoard();
+    renderArrowBuilder();
+    renderArrowFoundList();
+    updateArrowSubmitState();
+    updateArrowHearButton();
+    scheduleArrowPathsRedraw();
+  }
+
+  function renderArrowBoard() {
+    if (!els.arrowBoard) return;
+    const puzzle = currentArrowPuzzle();
+    els.arrowBoard.innerHTML = '';
+
+    const leftCol = document.createElement('div');
+    leftCol.className = 'arrow-col';
+    const leftLabel = document.createElement('span');
+    leftLabel.className = 'arrow-col-label';
+    leftLabel.textContent = 'Start';
+    leftCol.appendChild(leftLabel);
+    puzzle.left.forEach((ch, i) => {
+      const path = puzzle.words.find((entry) => entry.leftIdx === i);
+      const found = path && state.arrowFound.includes(path.w);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'arrow-letter';
+      if (path) btn.classList.add(`arrow-letter--path-start-${path.color}`);
+      if (found) btn.classList.add('arrow-letter--found');
+      if (state.arrowPickLeftIdx === i) btn.classList.add('arrow-letter--picked');
+      if (state.arrowPickColor && path && isArrowPathActive(path) && state.arrowPickRightIdx === null) {
+        btn.classList.add('arrow-letter--tracing');
+      }
+      if (state.arrowPickLeftIdx !== null && state.arrowPickLeftIdx !== i) {
+        btn.classList.add('arrow-letter--dim');
+      }
+      btn.textContent = ch;
+      btn.dataset.arrowSide = 'left';
+      btn.dataset.arrowIdx = String(i);
+      const colorHint = path ? `, ${arrowColorLabel(path.color)} path` : '';
+      btn.setAttribute('aria-label', `Start letter ${ch}${colorHint}`);
+      btn.disabled = state.arrowBlocked || found;
+      btn.onclick = () => {
+        if (state.arrowBlocked || found) return;
+        const entry = arrowPathForLeftIdx(i);
+        if (!entry) return;
+        state.arrowPickLeftIdx = i;
+        state.arrowPickRightIdx = null;
+        state.arrowPickColor = entry.color;
+        playAlphaSound(ch);
+        renderArrowBoard();
+        renderArrowBuilder();
+        updateArrowSubmitState();
+        updateArrowHearButton();
+        scheduleArrowPathsRedraw();
+      };
+      leftCol.appendChild(btn);
+    });
+
+    const center = document.createElement('div');
+    center.className = 'arrow-center';
+    center.dataset.arrowCenter = 'true';
+    center.setAttribute('aria-hidden', 'true');
+    center.textContent = puzzle.center;
+
+    const rightCol = document.createElement('div');
+    rightCol.className = 'arrow-col';
+    const rightLabel = document.createElement('span');
+    rightLabel.className = 'arrow-col-label';
+    rightLabel.textContent = 'End';
+    rightCol.appendChild(rightLabel);
+    puzzle.right.forEach((ch, i) => {
+      const pathsHere = puzzle.words.filter((entry) => entry.rightIdx === i);
+      const path = pathsHere[0];
+      const found = pathsHere.every((entry) => state.arrowFound.includes(entry.w));
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'arrow-letter';
+      if (path) btn.classList.add(`arrow-letter--path-end-${path.color}`);
+      if (found) btn.classList.add('arrow-letter--found');
+      if (state.arrowPickRightIdx === i) btn.classList.add('arrow-letter--picked');
+      const activePath = state.arrowPickLeftIdx !== null
+        ? arrowPathForPair(state.arrowPickLeftIdx, i)
+        : null;
+      if (activePath && isArrowPathActive(activePath)) btn.classList.add('arrow-letter--trace-target');
+      if (state.arrowPickLeftIdx !== null && !activePath) btn.classList.add('arrow-letter--dim');
+      btn.textContent = ch;
+      btn.dataset.arrowSide = 'right';
+      btn.dataset.arrowIdx = String(i);
+      const colorHint = path ? `, ${arrowColorLabel(path.color)} path` : '';
+      btn.setAttribute('aria-label', `End letter ${ch}${colorHint}`);
+      btn.disabled = state.arrowBlocked || found;
+      btn.onclick = () => {
+        if (state.arrowBlocked || found) return;
+        if (state.arrowPickLeftIdx === null) {
+          els.arrowFeedback.textContent = 'Pick a start letter on the left first! 👈';
+          els.arrowFeedback.className = 'feedback-msg wrong';
+          playWrongSound();
+          return;
+        }
+        const entry = arrowPathForPair(state.arrowPickLeftIdx, i);
+        if (!entry) {
+          const colorName = arrowColorLabel(state.arrowPickColor);
+          els.arrowFeedback.textContent = `Follow the ${colorName} arrow to the matching end letter! 🎨`;
+          els.arrowFeedback.className = 'feedback-msg wrong';
+          playWrongSound();
+          return;
+        }
+        state.arrowPickRightIdx = i;
+        state.arrowPickColor = entry.color;
+        playAlphaSound(ch);
+        els.arrowFeedback.textContent = '';
+        els.arrowFeedback.className = 'feedback-msg';
+        renderArrowBoard();
+        renderArrowBuilder();
+        updateArrowSubmitState();
+        updateArrowHearButton();
+        scheduleArrowPathsRedraw();
+      };
+      rightCol.appendChild(btn);
+    });
+
+    els.arrowBoard.appendChild(leftCol);
+    els.arrowBoard.appendChild(center);
+    els.arrowBoard.appendChild(rightCol);
+  }
+
+  function renderArrowPaths() {
+    const svg = els.arrowPathsSvg;
+    const stage = els.arrowBoardStage;
+    const board = els.arrowBoard;
+    if (!svg || !stage || !board) return;
+
+    const puzzle = currentArrowPuzzle();
+    const stageRect = stage.getBoundingClientRect();
+    if (stageRect.width < 1 || stageRect.height < 1) return;
+
+    svg.setAttribute('width', String(stageRect.width));
+    svg.setAttribute('height', String(stageRect.height));
+    svg.setAttribute('viewBox', `0 0 ${stageRect.width} ${stageRect.height}`);
+    svg.innerHTML = '';
+
+    const centerEl = board.querySelector('[data-arrow-center]');
+    if (!centerEl) return;
+
+    const pointFor = (el) => {
+      const r = el.getBoundingClientRect();
+      return {
+        x: r.left + r.width / 2 - stageRect.left,
+        y: r.top + r.height / 2 - stageRect.top,
+      };
+    };
+
+    const centerPt = pointFor(centerEl);
+
+    puzzle.words.forEach((entry) => {
+      const leftEl = board.querySelector(`[data-arrow-side="left"][data-arrow-idx="${entry.leftIdx}"]`);
+      const rightEl = board.querySelector(`[data-arrow-side="right"][data-arrow-idx="${entry.rightIdx}"]`);
+      if (!leftEl || !rightEl) return;
+
+      const meta = ARROW_COLORS[entry.color] || ARROW_COLORS.black;
+      const found = state.arrowFound.includes(entry.w);
+      const active = isArrowPathActive(entry);
+      const leftPt = pointFor(leftEl);
+      const rightPt = pointFor(rightEl);
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      const c1x = (leftPt.x + centerPt.x) / 2;
+      const c2x = (centerPt.x + rightPt.x) / 2;
+      const d = `M ${leftPt.x} ${leftPt.y} Q ${c1x} ${leftPt.y}, ${centerPt.x} ${centerPt.y} Q ${c2x} ${rightPt.y}, ${rightPt.x} ${rightPt.y}`;
+      path.setAttribute('d', d);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', meta.stroke);
+      path.setAttribute('stroke-width', active ? '5' : found ? '2.5' : '3.5');
+      path.setAttribute('stroke-opacity', found ? '0.28' : active ? '1' : '0.72');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('stroke-linejoin', 'round');
+      if (active) path.classList.add('arrow-path--active');
+      if (found) path.classList.add('arrow-path--found');
+      svg.appendChild(path);
+    });
+  }
+
+  function renderArrowBuilder() {
+    if (!els.arrowBuilderSlots) return;
+    const puzzle = currentArrowPuzzle();
+    const leftCh = state.arrowPickLeftIdx !== null ? puzzle.left[state.arrowPickLeftIdx] : null;
+    const rightCh = state.arrowPickRightIdx !== null ? puzzle.right[state.arrowPickRightIdx] : null;
+    els.arrowBuilderSlots.innerHTML = '';
+    const parts = [
+      { ch: leftCh, label: 'first letter', edge: 'start' },
+      { ch: puzzle.center, label: 'middle letter', center: true },
+      { ch: rightCh, label: 'last letter', edge: 'end' },
+    ];
+    parts.forEach((part) => {
+      const slot = document.createElement('span');
+      slot.className = 'arrow-build-slot';
+      if (part.center) slot.classList.add('arrow-build-slot--center');
+      if (state.arrowPickColor && part.edge === 'start') {
+        slot.classList.add(`arrow-build-slot--path-start-${state.arrowPickColor}`);
+      }
+      if (state.arrowPickColor && part.edge === 'end') {
+        slot.classList.add(`arrow-build-slot--path-end-${state.arrowPickColor}`);
+      }
+      if (part.ch) {
+        slot.classList.add('arrow-build-slot--filled');
+        slot.textContent = part.ch;
+        slot.setAttribute('aria-label', part.label + ' ' + part.ch);
+      } else {
+        slot.classList.add('arrow-build-slot--blank');
+        slot.textContent = '·';
+        slot.setAttribute('aria-label', 'Empty ' + part.label);
+      }
+      els.arrowBuilderSlots.appendChild(slot);
+    });
+  }
+
+  function renderArrowFoundList() {
+    if (!els.arrowFoundList) return;
+    els.arrowFoundList.innerHTML = '';
+    const puzzle = currentArrowPuzzle();
+    const goal = puzzle.words.length;
+    if (state.arrowFound.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'arrow-found-empty';
+      li.textContent = `Your words will show up here (0 / ${goal})`;
+      els.arrowFoundList.appendChild(li);
+      return;
+    }
+    state.arrowFound.forEach((w) => {
+      const entry = puzzle.words.find((e) => e.w === w);
+      const li = document.createElement('li');
+      if (entry) li.classList.add(`arrow-found-word--${entry.color}`);
+      li.textContent = w;
+      els.arrowFoundList.appendChild(li);
+    });
+  }
+
+  function updateArrowSubmitState() {
+    if (!els.arrowSubmitBtn) return;
+    const ready = state.arrowPickLeftIdx !== null && state.arrowPickRightIdx !== null;
+    els.arrowSubmitBtn.disabled = state.arrowBlocked || !ready;
+    updateArrowHearButton();
+  }
+
+  function getArrowSoundsInOrder() {
+    const puzzle = currentArrowPuzzle();
+    if (!puzzle) return [];
+    const out = [];
+    if (state.arrowPickLeftIdx !== null) out.push(puzzle.left[state.arrowPickLeftIdx]);
+    out.push(puzzle.center);
+    if (state.arrowPickRightIdx !== null) out.push(puzzle.right[state.arrowPickRightIdx]);
+    return out.filter(Boolean);
+  }
+
+  function updateArrowHearButton() {
+    if (!els.arrowHearWordBtn) return;
+    const busy = state.arrowListenPlaying;
+    const off = !state.soundOn;
+    const seq = getArrowSoundsInOrder();
+    const canPlay = seq.length >= 3;
+    els.arrowHearWordBtn.disabled = busy || off || !canPlay;
+    els.arrowHearWordBtn.setAttribute('aria-disabled', busy || off || !canPlay ? 'true' : 'false');
+    els.arrowHearWordBtn.title = off
+      ? 'Turn Sound on in the corner to use this step.'
+      : canPlay
+        ? `Plays: ${seq.join(' ').toUpperCase()}`
+        : 'Trace a colored path first (start and end).';
+    els.arrowHearWordBtn.setAttribute(
+      'aria-label',
+      state.arrowListenPlaying
+        ? 'Playing your word'
+        : canPlay
+          ? 'Listen to the letters in your word'
+          : 'Trace a colored path before listening'
+    );
+  }
+
+  async function playArrowWordLetterByLetter() {
+    if (!state.soundOn || state.arrowListenPlaying) return;
+    const toPlay = getArrowSoundsInOrder();
+    if (toPlay.length < 2) return;
+    const genAtStart = state.arrowListenGen;
+    state.arrowListenPlaying = true;
+    updateArrowHearButton();
+    try {
+      for (let i = 0; i < toPlay.length; i++) {
+        if (state.arrowListenGen !== genAtStart) return;
+        if (!state.soundOn) break;
+        await playAlphaSoundAndWait(toPlay[i]);
+        if (state.arrowListenGen !== genAtStart) return;
+        if (i < toPlay.length - 1) await new Promise((r) => setTimeout(r, 90));
+      }
+    } finally {
+      state.arrowListenPlaying = false;
+      updateArrowHearButton();
+    }
+  }
+
+  function checkArrowAnswer() {
+    if (state.arrowBlocked) return;
+    if (state.arrowPickLeftIdx === null || state.arrowPickRightIdx === null) {
+      els.arrowFeedback.textContent = 'Trace a colored path: start letter, then end letter! 👆';
+      els.arrowFeedback.className = 'feedback-msg wrong';
+      playWrongSound();
+      return;
+    }
+
+    const word = arrowBuiltWord();
+    const puzzle = currentArrowPuzzle();
+    state.arrowBlocked = true;
+    updateArrowSubmitState();
+
+    if (state.arrowFound.includes(word)) {
+      els.arrowFeedback.textContent = 'You found that word already — try another color path! 💡';
+      els.arrowFeedback.className = 'feedback-msg wrong';
+      playWrongSound();
+      setTimeout(() => {
+        state.arrowBlocked = false;
+        clearArrowPicks();
+        renderArrowBoard();
+        renderArrowBuilder();
+        updateArrowSubmitState();
+        scheduleArrowPathsRedraw();
+      }, BASE_CONFIG.wrongAnswerUnlockDelayMs);
+      return;
+    }
+
+    const match = findArrowWordMatch();
+    if (!match) {
+      const colorName = state.arrowPickColor ? arrowColorLabel(state.arrowPickColor) : 'matching';
+      els.arrowFeedback.textContent = `Follow the ${colorName} arrow all the way through — try again! 🎨`;
+      els.arrowFeedback.className = 'feedback-msg wrong';
+      if (els.arrowBoardStage) els.arrowBoardStage.classList.add('shake');
+      playWrongSound();
+      setTimeout(() => {
+        if (els.arrowBoardStage) els.arrowBoardStage.classList.remove('shake');
+        state.arrowBlocked = false;
+        clearArrowPicks();
+        renderArrowBoard();
+        renderArrowBuilder();
+        updateArrowSubmitState();
+        scheduleArrowPathsRedraw();
+      }, BASE_CONFIG.wrongAnswerUnlockDelayMs);
+      return;
+    }
+
+    state.arrowFound.push(word);
+    state.arrowScore++;
+    els.arrowFeedback.textContent = ['Yes! ' + word + '! 🎉', 'You traced ' + word + '! ⭐', 'Great word! 🌟'][Math.floor(Math.random() * 3)];
+    els.arrowFeedback.className = 'feedback-msg right';
+    playCelebrationSound();
+    if (!prefersReducedMotion) launchConfetti();
+    renderArrowFoundList();
+    clearArrowPicks();
+    state.arrowBlocked = false;
+    renderArrowBoard();
+    renderArrowBuilder();
+    updateArrowSubmitState();
+    scheduleArrowPathsRedraw();
+
+    if (state.arrowFound.length >= puzzle.words.length) {
+      setTimeout(nextArrowPuzzle, BASE_CONFIG.nextQuestionDelayMs);
+      return;
+    }
+  }
+
+  function nextArrowPuzzle() {
+    state.arrowPuzzleIndex++;
+    if (state.arrowPuzzleIndex >= state.arrowPuzzles.length) {
+      showArrowEnd();
+      return;
+    }
+    loadArrowPuzzle();
+  }
+
+  function showArrowEnd() {
+    showScreen('end');
+    const total = arrowRoundWordGoal();
+    const stars = starLineForScore(state.arrowScore, total);
+    const msg = state.arrowScore === total ? 'PERFECT!' : state.arrowScore >= Math.ceil(total * 0.8) ? 'Amazing!' : state.arrowScore >= Math.ceil(total * 0.5) ? 'Great job!' : 'Keep going!';
+    const best = Math.max(getSpellingBest(), state.arrowScore);
+    setSpellingBest(best);
+
+    els.endScreen.innerHTML = `
+      <div class="end-trophy">🏆</div>
+      <div class="end-title">${msg}</div>
+      <div class="end-score">${state.arrowScore} / ${total}</div>
+      <div class="end-stars">${stars}</div>
+      <div class="best-score">Best (Arrow words): ${best} / ${total}</div>
+      <div class="stats">Arrow words round complete</div>
+      <div class="end-actions">
+        <button class="play-again-btn" id="play-again-btn" type="button">Play again 🎮</button>
+        <button class="secondary-btn" id="change-spell-btn" type="button">Change spelling ⚙️</button>
+        <button class="secondary-btn" id="home-btn" type="button">Home 🏠</button>
+      </div>
+    `;
+
+    document.getElementById('play-again-btn').onclick = () => startArrowRound();
+    document.getElementById('change-spell-btn').onclick = () => {
+      pickRandomBg();
+      showScreen('spellingSetup');
+      syncSpellingSetupUI();
+    };
+    document.getElementById('home-btn').onclick = () => {
+      state.activeGame = 'math';
+      requestGoHome();
+    };
+
+    if (!prefersReducedMotion) launchConfetti(60);
+    if (state.arrowScore === total) playSound('endPerfect', playCelebrationSound);
     else playSound('endTryAgain', playWrongSound);
   }
 
@@ -1307,6 +1990,10 @@
       els.spellingSoundToggle.textContent = on;
       els.spellingSoundToggle.setAttribute('aria-pressed', pressed);
     }
+    if (els.arrowSoundToggle) {
+      els.arrowSoundToggle.textContent = on;
+      els.arrowSoundToggle.setAttribute('aria-pressed', pressed);
+    }
   }
 
   function updateHintToggle() {
@@ -1345,9 +2032,13 @@
   if (els.spellingStartBtn) {
     els.spellingStartBtn.addEventListener('click', () => {
       playSubmitSound();
-      startSpellingRound();
+      if (state.spellingMode === 'arrow') startArrowRound();
+      else startSpellingRound();
     });
   }
+
+  if (els.spellModePicture) els.spellModePicture.addEventListener('click', () => setSpellingMode('picture'));
+  if (els.spellModeArrow) els.spellModeArrow.addEventListener('click', () => setSpellingMode('arrow'));
 
   if (els.spellCatCvc) els.spellCatCvc.addEventListener('click', () => setSpellingCategory('cvc'));
   if (els.spellCatBlend) els.spellCatBlend.addEventListener('click', () => setSpellingCategory('blend'));
@@ -1397,11 +2088,26 @@
     state.soundOn = !state.soundOn;
     updateSoundToggle();
     updateSpellingHearButton();
+    updateArrowHearButton();
     if (state.soundOn) playToggleSound();
   }
 
   els.soundToggle.addEventListener('click', onSoundToggleClick);
   if (els.spellingSoundToggle) els.spellingSoundToggle.addEventListener('click', onSoundToggleClick);
+  if (els.arrowSoundToggle) els.arrowSoundToggle.addEventListener('click', onSoundToggleClick);
+
+  if (els.arrowSubmitBtn) {
+    els.arrowSubmitBtn.addEventListener('click', () => {
+      playSubmitSound();
+      checkArrowAnswer();
+    });
+  }
+
+  if (els.arrowHearWordBtn) {
+    els.arrowHearWordBtn.addEventListener('click', () => {
+      playArrowWordLetterByLetter();
+    });
+  }
 
   els.hintToggle.addEventListener('click', () => {
     state.hintOn = !state.hintOn;
@@ -1438,6 +2144,13 @@
     }
   });
 
+  let arrowResizeTimer = null;
+  window.addEventListener('resize', () => {
+    if (currentRoute !== 'arrowPlay') return;
+    if (arrowResizeTimer) clearTimeout(arrowResizeTimer);
+    arrowResizeTimer = setTimeout(() => scheduleArrowPathsRedraw(), 120);
+  });
+
   initSoundFx();
   initAlphaSounds();
   loadMathPrefs();
@@ -1447,6 +2160,7 @@
   updateSoundToggle();
   updateHintToggle();
   updateSpellingHearButton();
+  updateArrowHearButton();
   state.activeGame = 'math';
   pickRandomBg();
   showScreen('home');

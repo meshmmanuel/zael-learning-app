@@ -68,9 +68,17 @@
 
   <div id="spelling-setup-screen" class="screen screen--setup spelling-setup" style="display:none;">
     <h2 class="screen-title">Spelling time! 🔤</h2>
-    <p class="screen-sub">Pick a practice type (like color-coded boards).</p>
+    <p class="screen-sub" id="spelling-setup-sub">Pick how you want to practice.</p>
 
     <fieldset class="setup-fieldset">
+      <legend class="setup-legend">Practice style</legend>
+      <div class="pick-row" role="group" aria-label="Spelling practice style">
+        <button type="button" class="pick-btn spelling-mode-btn" id="spell-mode-picture" aria-pressed="true">Picture words 🖼️</button>
+        <button type="button" class="pick-btn spelling-mode-btn" id="spell-mode-arrow" aria-pressed="false">Arrow words 🔀</button>
+      </div>
+    </fieldset>
+
+    <fieldset class="setup-fieldset" id="spelling-cat-fieldset">
       <legend class="setup-legend">Word type</legend>
       <div class="pick-row" role="group" aria-label="Spelling word type">
         <button type="button" class="pick-btn spelling-cat-btn" id="spell-cat-cvc" aria-pressed="true">CVC 🌱</button>
@@ -80,11 +88,45 @@
       </div>
     </fieldset>
 
-    <p class="screen-hint">Each round: tap <strong>Hear my letters</strong> to hear what you put in the word (left to right), then fix or submit. Letter buttons still play their sound.</p>
+    <p class="screen-hint" id="spelling-setup-hint">Each round: tap <strong>Hear my letters</strong> to hear what you put in the word (left to right), then fix or submit. Letter buttons still play their sound.</p>
 
     <div class="setup-actions">
       <button type="button" class="secondary-btn" id="spelling-back-btn">← Back</button>
       <button type="button" class="primary-btn" id="spelling-start-btn">Let’s spell! ✏️</button>
+    </div>
+  </div>
+
+  <div id="arrow-play-screen" class="screen screen--play arrow-play" style="display:none;">
+    <div class="play-panel">
+      <div class="top-bar">
+        <div class="q-label" id="arrow-q-label">Board 1 of 3</div>
+        <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="arrow-progress-fill" style="width:33%"></div></div>
+      </div>
+      <div class="question-area arrow-question-area">
+        <div class="toolbar toolbar--spelling-settings" aria-label="Sound settings">
+          <button type="button" id="arrow-sound-toggle" class="sound-toggle sound-toggle--compact" aria-pressed="true">Sound: On</button>
+        </div>
+        <p class="arrow-prompt" id="arrow-prompt" aria-live="polite">Make words through the middle letter!</p>
+        <p class="arrow-example" id="arrow-example" hidden></p>
+        <div class="arrow-board-stage" id="arrow-board-stage">
+          <svg class="arrow-paths-svg" id="arrow-paths-svg" aria-hidden="true"></svg>
+          <div class="arrow-board" id="arrow-board" role="group" aria-label="Letter board"></div>
+        </div>
+        <div class="arrow-builder" aria-label="Word you are building">
+          <span class="arrow-builder-label">My word</span>
+          <div class="arrow-builder-slots" id="arrow-builder-slots"></div>
+        </div>
+        <button type="button" class="spell-listen-btn" id="arrow-hear-word-btn">
+          <span class="spell-listen-icon" aria-hidden="true">🔊</span>
+          <span class="spell-listen-text">Hear my word</span>
+        </button>
+        <div class="arrow-found" aria-label="Words you found">
+          <div class="answer-label">My words</div>
+          <ul class="arrow-found-list" id="arrow-found-list"></ul>
+        </div>
+        <div class="feedback-msg" id="arrow-feedback" aria-live="polite"></div>
+        <button class="submit-btn" id="arrow-submit-btn" type="button" disabled>That’s my word! ✅</button>
+      </div>
     </div>
   </div>
 
