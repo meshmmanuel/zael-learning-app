@@ -61,6 +61,37 @@
     return m;
   })();
 
+  const PHONICS_SOUND_SRC = {
+    a: 'audio/phonics_audio/Short_Vowel/a-apple.mp3',
+    e: 'audio/phonics_audio/Short_Vowel/e-elephant.mp3',
+    i: 'audio/phonics_audio/Short_Vowel/i-igloo.mp3',
+    o: 'audio/phonics_audio/Short_Vowel/o-octopus.mp3',
+    u: 'audio/phonics_audio/Short_Vowel/u-up.mp3',
+    b: 'audio/phonics_audio/Consonant/b-bat.mp3',
+    c: 'audio/phonics_audio/Consonant/c-cut.mp3',
+    d: 'audio/phonics_audio/Consonant/d-dip.mp3',
+    f: 'audio/phonics_audio/Consonant/f-fun.mp3',
+    g: 'audio/phonics_audio/Consonant/g-get.mp3',
+    h: 'audio/phonics_audio/Consonant/h-hat.mp3',
+    j: 'audio/phonics_audio/Consonant/j-jog.mp3',
+    k: 'audio/phonics_audio/Consonant/k-kit.mp3',
+    l: 'audio/phonics_audio/Consonant/l-lip.mp3',
+    m: 'audio/phonics_audio/Consonant/m-mug.mp3',
+    n: 'audio/phonics_audio/Consonant/n-nap.mp3',
+    p: 'audio/phonics_audio/Consonant/p-pick.mp3',
+    q: 'audio/phonics_audio/Consonant/qu-quest.mp3',
+    r: 'audio/phonics_audio/Consonant/r-rid.mp3',
+    s: 'audio/phonics_audio/Consonant/s-sit-mess.mp3',
+    t: 'audio/phonics_audio/Consonant/t-tuck.mp3',
+    v: 'audio/phonics_audio/Consonant/v-van.mp3',
+    w: 'audio/phonics_audio/Consonant/w-will.mp3',
+    x: 'audio/phonics_audio/Consonant/x-mix-rocks.mp3',
+    y: 'audio/phonics_audio/Consonant/y-yes.mp3',
+    z: 'audio/phonics_audio/Consonant/z-zip-buzz.mp3',
+  };
+
+  const PHONICS_ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
+
   const STORAGE = { mathPrefs: 'kidsAppV1MathPrefs', spellingPrefs: 'kidsAppV1SpellingPrefs' };
   const LEGACY_BEST_KEY = 'kidsMathV3BestScore';
 
@@ -206,7 +237,9 @@
 
   const state = {
     activeGame: 'math',
-    spellingMode: 'picture',
+    spellingMode: 'phonics',
+    phonicsPlayGen: 0,
+    phonicsAlphabetPlaying: false,
     spellingCategory: 'cvc',
     spellingWords: [],
     spellQIndex: 0,
@@ -224,7 +257,6 @@
     arrowPuzzles: [],
     arrowPickLeftIdx: null,
     arrowPickRightIdx: null,
-    arrowPickColor: null,
     arrowFound: [],
     arrowBlocked: false,
     arrowScore: 0,
@@ -269,9 +301,14 @@
     mathSetupScreen: document.getElementById('math-setup-screen'),
     spellingSetupScreen: document.getElementById('spelling-setup-screen'),
     spellingPlayScreen: document.getElementById('spelling-play-screen'),
+    phonicsPlayScreen: document.getElementById('phonics-play-screen'),
     arrowPlayScreen: document.getElementById('arrow-play-screen'),
+    spellModePhonics: document.getElementById('spell-mode-phonics'),
     spellModePicture: document.getElementById('spell-mode-picture'),
     spellModeArrow: document.getElementById('spell-mode-arrow'),
+    phonicsGrid: document.getElementById('phonics-grid'),
+    phonicsPlayAzBtn: document.getElementById('phonics-play-az-btn'),
+    phonicsSoundToggle: document.getElementById('phonics-sound-toggle'),
     spellingCatFieldset: document.getElementById('spelling-cat-fieldset'),
     spellingSetupHint: document.getElementById('spelling-setup-hint'),
     spellingStartBtn: document.getElementById('spelling-start-btn'),
@@ -334,6 +371,7 @@
   let audioCtx = null;
   let soundFx = {};
   let alphaSoundFx = {};
+  let phonicsSoundFx = {};
 
   let currentRoute = 'home';
 
@@ -342,6 +380,7 @@
     mathSetup: 'Numbers — Set up',
     spellingSetup: 'Spelling — Set up',
     play: 'Numbers — Practice',
+    phonicsPlay: 'Letter sounds',
     spellingPlay: 'Spelling — Practice',
     arrowPlay: 'Arrow words — Practice',
     end: 'Round finished!',
@@ -525,7 +564,7 @@
   }
 
   function requestGoHome() {
-    if (currentRoute === 'play' || currentRoute === 'spellingPlay' || currentRoute === 'arrowPlay') {
+    if (currentRoute === 'play' || currentRoute === 'phonicsPlay' || currentRoute === 'spellingPlay' || currentRoute === 'arrowPlay') {
       openAppModal({
         title: 'Go home?',
         message: 'This round will stop. You can start a new one anytime!',
@@ -543,11 +582,16 @@
   }
 
   function showScreen(name) {
+    if (currentRoute === 'phonicsPlay' && name !== 'phonicsPlay') {
+      state.phonicsPlayGen += 1;
+      state.phonicsAlphabetPlaying = false;
+    }
     const screens = {
       home: els.homeScreen,
       mathSetup: els.mathSetupScreen,
       spellingSetup: els.spellingSetupScreen,
       spellingPlay: els.spellingPlayScreen,
+      phonicsPlay: els.phonicsPlayScreen,
       arrowPlay: els.arrowPlayScreen,
       play: els.mainScreen,
       end: els.endScreen,
@@ -563,6 +607,8 @@
       screens.spellingSetup.style.display = 'flex';
     } else if (name === 'spellingPlay') {
       screens.spellingPlay.style.display = 'flex';
+    } else if (name === 'phonicsPlay') {
+      if (screens.phonicsPlay) screens.phonicsPlay.style.display = 'flex';
     } else if (name === 'arrowPlay') {
       if (screens.arrowPlay) screens.arrowPlay.style.display = 'flex';
     } else if (name === 'play') {
@@ -636,7 +682,7 @@
       const raw = localStorage.getItem(STORAGE.spellingPrefs);
       if (!raw) return;
       const data = JSON.parse(raw);
-      if (data.mode === 'picture' || data.mode === 'arrow') state.spellingMode = data.mode;
+      if (data.mode === 'phonics' || data.mode === 'picture' || data.mode === 'arrow') state.spellingMode = data.mode;
       if (data.category === 'cvc' || data.category === 'blend' || data.category === 'digraph' || data.category === 'mixed') {
         state.spellingCategory = data.category;
       }
@@ -657,7 +703,11 @@
   }
 
   function syncSpellingSetupUI() {
-    const modeMap = { picture: els.spellModePicture, arrow: els.spellModeArrow };
+    const modeMap = {
+      phonics: els.spellModePhonics,
+      picture: els.spellModePicture,
+      arrow: els.spellModeArrow,
+    };
     Object.values(modeMap).forEach((btn) => { if (btn) btn.setAttribute('aria-pressed', 'false'); });
     if (modeMap[state.spellingMode]) modeMap[state.spellingMode].setAttribute('aria-pressed', 'true');
 
@@ -670,15 +720,22 @@
     Object.values(catMap).forEach((btn) => { if (btn) btn.setAttribute('aria-pressed', 'false'); });
     if (catMap[state.spellingCategory]) catMap[state.spellingCategory].setAttribute('aria-pressed', 'true');
 
+    const isPhonics = state.spellingMode === 'phonics';
     const isArrow = state.spellingMode === 'arrow';
-    if (els.spellingCatFieldset) els.spellingCatFieldset.hidden = isArrow;
+    if (els.spellingCatFieldset) els.spellingCatFieldset.hidden = isPhonics || isArrow;
     if (els.spellingSetupHint) {
-      els.spellingSetupHint.textContent = isArrow
-        ? 'Follow the colored arrows: tap the start letter, then the end letter on the same color path. Hear your word, then submit!'
-        : 'Each round: tap Hear my letters to hear what you put in the word (left to right), then fix or submit. Letter buttons still play their sound.';
+      if (isPhonics) {
+        els.spellingSetupHint.textContent = 'Tap any letter to hear its sound (phonics). Try Play A to Z when you are ready!';
+      } else if (isArrow) {
+        els.spellingSetupHint.textContent = 'Look at the colored lines on the board. Pick any start and end letters, hear your word, then submit when you are ready!';
+      } else {
+        els.spellingSetupHint.textContent = 'Each round: tap Hear my letters to hear what you put in the word (left to right), then fix or submit. Letter buttons still play their sound.';
+      }
     }
     if (els.spellingStartBtn) {
-      els.spellingStartBtn.textContent = isArrow ? 'Let’s find words! 🔀' : 'Let’s spell! ✏️';
+      if (isPhonics) els.spellingStartBtn.textContent = 'Let’s hear letters! 🔊';
+      else if (isArrow) els.spellingStartBtn.textContent = 'Let’s find words! 🔀';
+      else els.spellingStartBtn.textContent = 'Let’s spell! ✏️';
     }
   }
 
@@ -692,6 +749,68 @@
     state.spellingCategory = cat;
     syncSpellingSetupUI();
     playSelectSound();
+  }
+
+  function startPhonicsPlay() {
+    state.activeGame = 'phonics';
+    saveSpellingPrefs();
+    pickRandomBg();
+    state.phonicsPlayGen += 1;
+    state.phonicsAlphabetPlaying = false;
+    showScreen('phonicsPlay');
+    renderPhonicsGrid();
+    updatePhonicsPlayAzButton();
+  }
+
+  function renderPhonicsGrid() {
+    if (!els.phonicsGrid) return;
+    els.phonicsGrid.innerHTML = '';
+    PHONICS_ALPHABET.forEach((letter) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'phonics-letter';
+      btn.textContent = letter.toUpperCase();
+      btn.setAttribute('aria-label', `Letter ${letter.toUpperCase()}`);
+      btn.disabled = state.phonicsAlphabetPlaying;
+      btn.onclick = () => {
+        if (state.phonicsAlphabetPlaying) return;
+        playPhonicsSound(letter);
+      };
+      els.phonicsGrid.appendChild(btn);
+    });
+  }
+
+  function updatePhonicsPlayAzButton() {
+    if (!els.phonicsPlayAzBtn) return;
+    const off = !state.soundOn;
+    els.phonicsPlayAzBtn.disabled = state.phonicsAlphabetPlaying || off;
+    els.phonicsPlayAzBtn.setAttribute('aria-disabled', state.phonicsAlphabetPlaying || off ? 'true' : 'false');
+    els.phonicsPlayAzBtn.title = off
+      ? 'Turn Sound on to play the alphabet.'
+      : state.phonicsAlphabetPlaying
+        ? 'Playing A to Z…'
+        : 'Hear every letter sound from A to Z';
+  }
+
+  async function playPhonicsAlphabet() {
+    if (!state.soundOn || state.phonicsAlphabetPlaying) return;
+    const genAtStart = state.phonicsPlayGen;
+    state.phonicsAlphabetPlaying = true;
+    updatePhonicsPlayAzButton();
+    renderPhonicsGrid();
+    try {
+      for (let i = 0; i < PHONICS_ALPHABET.length; i++) {
+        if (state.phonicsPlayGen !== genAtStart) return;
+        if (!state.soundOn) break;
+        await playPhonicsSoundAndWait(PHONICS_ALPHABET[i]);
+        if (state.phonicsPlayGen !== genAtStart) return;
+        if (i < PHONICS_ALPHABET.length - 1) await new Promise((r) => setTimeout(r, 120));
+      }
+    } finally {
+      state.phonicsAlphabetPlaying = false;
+      updatePhonicsPlayAzButton();
+      renderPhonicsGrid();
+    }
   }
 
   function buildRevealMask(word) {
@@ -960,21 +1079,14 @@
   function clearArrowPicks() {
     state.arrowPickLeftIdx = null;
     state.arrowPickRightIdx = null;
-    state.arrowPickColor = null;
     state.arrowListenGen += 1;
-  }
-
-  function arrowPathForLeftIdx(leftIdx) {
-    const puzzle = currentArrowPuzzle();
-    if (!puzzle) return null;
-    return puzzle.words.find((entry) => entry.leftIdx === leftIdx && !state.arrowFound.includes(entry.w)) || null;
   }
 
   function arrowPathForPair(leftIdx, rightIdx) {
     const puzzle = currentArrowPuzzle();
     if (!puzzle) return null;
     return puzzle.words.find(
-      (entry) => entry.leftIdx === leftIdx && entry.rightIdx === rightIdx && !state.arrowFound.includes(entry.w)
+      (entry) => entry.leftIdx === leftIdx && entry.rightIdx === rightIdx
     ) || null;
   }
 
@@ -988,23 +1100,12 @@
   }
 
   function findArrowWordMatch() {
-    if (state.arrowPickLeftIdx === null || state.arrowPickRightIdx === null || !state.arrowPickColor) return null;
+    if (state.arrowPickLeftIdx === null || state.arrowPickRightIdx === null) return null;
     const puzzle = currentArrowPuzzle();
     if (!puzzle) return null;
-    return puzzle.words.find(
-      (entry) => entry.leftIdx === state.arrowPickLeftIdx
-        && entry.rightIdx === state.arrowPickRightIdx
-        && entry.color === state.arrowPickColor
-    ) || null;
-  }
-
-  function arrowColorLabel(colorId) {
-    return (ARROW_COLORS[colorId] && ARROW_COLORS[colorId].label) || colorId;
-  }
-
-  function isArrowPathActive(entry) {
-    return state.arrowPickColor === entry.color
-      && state.arrowPickLeftIdx === entry.leftIdx;
+    const entry = arrowPathForPair(state.arrowPickLeftIdx, state.arrowPickRightIdx);
+    if (!entry || state.arrowFound.includes(entry.w)) return null;
+    return entry.w === arrowBuiltWord() ? entry : null;
   }
 
   function scheduleArrowPathsRedraw() {
@@ -1022,15 +1123,10 @@
     const goal = puzzle.words.length;
     els.arrowQLabel.textContent = `Board ${state.arrowPuzzleIndex + 1} of ${totalBoards}`;
     els.arrowProgressFill.style.width = `${((state.arrowPuzzleIndex + 1) / totalBoards) * 100}%`;
-    els.arrowPrompt.textContent = `Follow the colored arrows and find ${goal} words through “${puzzle.center}”!`;
+    els.arrowPrompt.textContent = `Use the colored lines to find ${goal} words through “${puzzle.center}”!`;
     if (els.arrowExample) {
-      if (state.arrowPuzzleIndex === 0 && puzzle.hintWord && puzzle.hintColor) {
-        els.arrowExample.hidden = false;
-        els.arrowExample.textContent = `Example: ${arrowColorLabel(puzzle.hintColor)} path → ${puzzle.hintWord}`;
-      } else {
-        els.arrowExample.hidden = true;
-        els.arrowExample.textContent = '';
-      }
+      els.arrowExample.hidden = true;
+      els.arrowExample.textContent = '';
     }
     els.arrowFeedback.textContent = '';
     els.arrowFeedback.className = 'feedback-msg';
@@ -1054,39 +1150,23 @@
     leftLabel.textContent = 'Start';
     leftCol.appendChild(leftLabel);
     puzzle.left.forEach((ch, i) => {
-      const path = puzzle.words.find((entry) => entry.leftIdx === i);
-      const found = path && state.arrowFound.includes(path.w);
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'arrow-letter';
-      if (path) btn.classList.add(`arrow-letter--path-start-${path.color}`);
-      if (found) btn.classList.add('arrow-letter--found');
-      if (state.arrowPickLeftIdx === i) btn.classList.add('arrow-letter--picked');
-      if (state.arrowPickColor && path && isArrowPathActive(path) && state.arrowPickRightIdx === null) {
-        btn.classList.add('arrow-letter--tracing');
-      }
-      if (state.arrowPickLeftIdx !== null && state.arrowPickLeftIdx !== i) {
-        btn.classList.add('arrow-letter--dim');
-      }
       btn.textContent = ch;
       btn.dataset.arrowSide = 'left';
       btn.dataset.arrowIdx = String(i);
-      const colorHint = path ? `, ${arrowColorLabel(path.color)} path` : '';
-      btn.setAttribute('aria-label', `Start letter ${ch}${colorHint}`);
-      btn.disabled = state.arrowBlocked || found;
+      btn.setAttribute('aria-label', `Start letter ${ch}`);
+      btn.disabled = state.arrowBlocked;
       btn.onclick = () => {
-        if (state.arrowBlocked || found) return;
-        const entry = arrowPathForLeftIdx(i);
-        if (!entry) return;
+        if (state.arrowBlocked) return;
         state.arrowPickLeftIdx = i;
-        state.arrowPickRightIdx = null;
-        state.arrowPickColor = entry.color;
         playAlphaSound(ch);
-        renderArrowBoard();
+        els.arrowFeedback.textContent = '';
+        els.arrowFeedback.className = 'feedback-msg';
         renderArrowBuilder();
         updateArrowSubmitState();
         updateArrowHearButton();
-        scheduleArrowPathsRedraw();
       };
       leftCol.appendChild(btn);
     });
@@ -1104,52 +1184,23 @@
     rightLabel.textContent = 'End';
     rightCol.appendChild(rightLabel);
     puzzle.right.forEach((ch, i) => {
-      const pathsHere = puzzle.words.filter((entry) => entry.rightIdx === i);
-      const path = pathsHere[0];
-      const found = pathsHere.every((entry) => state.arrowFound.includes(entry.w));
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'arrow-letter';
-      if (path) btn.classList.add(`arrow-letter--path-end-${path.color}`);
-      if (found) btn.classList.add('arrow-letter--found');
-      if (state.arrowPickRightIdx === i) btn.classList.add('arrow-letter--picked');
-      const activePath = state.arrowPickLeftIdx !== null
-        ? arrowPathForPair(state.arrowPickLeftIdx, i)
-        : null;
-      if (activePath && isArrowPathActive(activePath)) btn.classList.add('arrow-letter--trace-target');
-      if (state.arrowPickLeftIdx !== null && !activePath) btn.classList.add('arrow-letter--dim');
       btn.textContent = ch;
       btn.dataset.arrowSide = 'right';
       btn.dataset.arrowIdx = String(i);
-      const colorHint = path ? `, ${arrowColorLabel(path.color)} path` : '';
-      btn.setAttribute('aria-label', `End letter ${ch}${colorHint}`);
-      btn.disabled = state.arrowBlocked || found;
+      btn.setAttribute('aria-label', `End letter ${ch}`);
+      btn.disabled = state.arrowBlocked;
       btn.onclick = () => {
-        if (state.arrowBlocked || found) return;
-        if (state.arrowPickLeftIdx === null) {
-          els.arrowFeedback.textContent = 'Pick a start letter on the left first! 👈';
-          els.arrowFeedback.className = 'feedback-msg wrong';
-          playWrongSound();
-          return;
-        }
-        const entry = arrowPathForPair(state.arrowPickLeftIdx, i);
-        if (!entry) {
-          const colorName = arrowColorLabel(state.arrowPickColor);
-          els.arrowFeedback.textContent = `Follow the ${colorName} arrow to the matching end letter! 🎨`;
-          els.arrowFeedback.className = 'feedback-msg wrong';
-          playWrongSound();
-          return;
-        }
+        if (state.arrowBlocked) return;
         state.arrowPickRightIdx = i;
-        state.arrowPickColor = entry.color;
         playAlphaSound(ch);
         els.arrowFeedback.textContent = '';
         els.arrowFeedback.className = 'feedback-msg';
-        renderArrowBoard();
         renderArrowBuilder();
         updateArrowSubmitState();
         updateArrowHearButton();
-        scheduleArrowPathsRedraw();
       };
       rightCol.appendChild(btn);
     });
@@ -1157,6 +1208,7 @@
     els.arrowBoard.appendChild(leftCol);
     els.arrowBoard.appendChild(center);
     els.arrowBoard.appendChild(rightCol);
+    scheduleArrowPathsRedraw();
   }
 
   function renderArrowPaths() {
@@ -1194,7 +1246,6 @@
 
       const meta = ARROW_COLORS[entry.color] || ARROW_COLORS.black;
       const found = state.arrowFound.includes(entry.w);
-      const active = isArrowPathActive(entry);
       const leftPt = pointFor(leftEl);
       const rightPt = pointFor(rightEl);
 
@@ -1205,11 +1256,10 @@
       path.setAttribute('d', d);
       path.setAttribute('fill', 'none');
       path.setAttribute('stroke', meta.stroke);
-      path.setAttribute('stroke-width', active ? '5' : found ? '2.5' : '3.5');
-      path.setAttribute('stroke-opacity', found ? '0.28' : active ? '1' : '0.72');
+      path.setAttribute('stroke-width', found ? '2.5' : '3.5');
+      path.setAttribute('stroke-opacity', found ? '0.3' : '0.8');
       path.setAttribute('stroke-linecap', 'round');
       path.setAttribute('stroke-linejoin', 'round');
-      if (active) path.classList.add('arrow-path--active');
       if (found) path.classList.add('arrow-path--found');
       svg.appendChild(path);
     });
@@ -1222,20 +1272,14 @@
     const rightCh = state.arrowPickRightIdx !== null ? puzzle.right[state.arrowPickRightIdx] : null;
     els.arrowBuilderSlots.innerHTML = '';
     const parts = [
-      { ch: leftCh, label: 'first letter', edge: 'start' },
+      { ch: leftCh, label: 'first letter' },
       { ch: puzzle.center, label: 'middle letter', center: true },
-      { ch: rightCh, label: 'last letter', edge: 'end' },
+      { ch: rightCh, label: 'last letter' },
     ];
     parts.forEach((part) => {
       const slot = document.createElement('span');
       slot.className = 'arrow-build-slot';
       if (part.center) slot.classList.add('arrow-build-slot--center');
-      if (state.arrowPickColor && part.edge === 'start') {
-        slot.classList.add(`arrow-build-slot--path-start-${state.arrowPickColor}`);
-      }
-      if (state.arrowPickColor && part.edge === 'end') {
-        slot.classList.add(`arrow-build-slot--path-end-${state.arrowPickColor}`);
-      }
       if (part.ch) {
         slot.classList.add('arrow-build-slot--filled');
         slot.textContent = part.ch;
@@ -1262,9 +1306,7 @@
       return;
     }
     state.arrowFound.forEach((w) => {
-      const entry = puzzle.words.find((e) => e.w === w);
       const li = document.createElement('li');
-      if (entry) li.classList.add(`arrow-found-word--${entry.color}`);
       li.textContent = w;
       els.arrowFoundList.appendChild(li);
     });
@@ -1334,7 +1376,7 @@
   function checkArrowAnswer() {
     if (state.arrowBlocked) return;
     if (state.arrowPickLeftIdx === null || state.arrowPickRightIdx === null) {
-      els.arrowFeedback.textContent = 'Trace a colored path: start letter, then end letter! 👆';
+      els.arrowFeedback.textContent = 'Pick a start letter and an end letter, then submit! 👆';
       els.arrowFeedback.className = 'feedback-msg wrong';
       playWrongSound();
       return;
@@ -1346,7 +1388,7 @@
     updateArrowSubmitState();
 
     if (state.arrowFound.includes(word)) {
-      els.arrowFeedback.textContent = 'You found that word already — try another color path! 💡';
+      els.arrowFeedback.textContent = 'You found that word already — try another! 💡';
       els.arrowFeedback.className = 'feedback-msg wrong';
       playWrongSound();
       setTimeout(() => {
@@ -1362,19 +1404,15 @@
 
     const match = findArrowWordMatch();
     if (!match) {
-      const colorName = state.arrowPickColor ? arrowColorLabel(state.arrowPickColor) : 'matching';
-      els.arrowFeedback.textContent = `Follow the ${colorName} arrow all the way through — try again! 🎨`;
+      els.arrowFeedback.textContent = 'Not a word on this board — try again! 💪';
       els.arrowFeedback.className = 'feedback-msg wrong';
       if (els.arrowBoardStage) els.arrowBoardStage.classList.add('shake');
       playWrongSound();
       setTimeout(() => {
         if (els.arrowBoardStage) els.arrowBoardStage.classList.remove('shake');
         state.arrowBlocked = false;
-        clearArrowPicks();
         renderArrowBoard();
-        renderArrowBuilder();
         updateArrowSubmitState();
-        scheduleArrowPathsRedraw();
       }, BASE_CONFIG.wrongAnswerUnlockDelayMs);
       return;
     }
@@ -1493,6 +1531,57 @@
       const a = new Audio(src);
       a.preload = 'auto';
       alphaSoundFx[letter] = a;
+    });
+  }
+
+  function initPhonicsSounds() {
+    phonicsSoundFx = {};
+    Object.entries(PHONICS_SOUND_SRC).forEach(([letter, src]) => {
+      const a = new Audio(src);
+      a.preload = 'auto';
+      phonicsSoundFx[letter] = a;
+    });
+  }
+
+  function playPhonicsSound(letter) {
+    if (!state.soundOn) return;
+    const k = String(letter).toLowerCase();
+    if (!PHONICS_SOUND_SRC[k]) return;
+    const base = phonicsSoundFx[k];
+    if (!base) return;
+    const inst = base.cloneNode();
+    inst.play().catch(() => {});
+  }
+
+  function playPhonicsSoundAndWait(letter) {
+    return new Promise((resolve) => {
+      let done = false;
+      let safetyTimer = 0;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        if (safetyTimer) clearTimeout(safetyTimer);
+        resolve();
+      };
+      if (!state.soundOn) {
+        finish();
+        return;
+      }
+      const k = String(letter).toLowerCase();
+      if (!PHONICS_SOUND_SRC[k]) {
+        finish();
+        return;
+      }
+      const base = phonicsSoundFx[k];
+      if (!base) {
+        finish();
+        return;
+      }
+      const inst = base.cloneNode();
+      inst.addEventListener('ended', finish, { once: true });
+      inst.addEventListener('error', finish, { once: true });
+      safetyTimer = setTimeout(finish, 2500);
+      inst.play().catch(finish);
     });
   }
 
@@ -1990,6 +2079,10 @@
       els.spellingSoundToggle.textContent = on;
       els.spellingSoundToggle.setAttribute('aria-pressed', pressed);
     }
+    if (els.phonicsSoundToggle) {
+      els.phonicsSoundToggle.textContent = on;
+      els.phonicsSoundToggle.setAttribute('aria-pressed', pressed);
+    }
     if (els.arrowSoundToggle) {
       els.arrowSoundToggle.textContent = on;
       els.arrowSoundToggle.setAttribute('aria-pressed', pressed);
@@ -2032,11 +2125,13 @@
   if (els.spellingStartBtn) {
     els.spellingStartBtn.addEventListener('click', () => {
       playSubmitSound();
-      if (state.spellingMode === 'arrow') startArrowRound();
+      if (state.spellingMode === 'phonics') startPhonicsPlay();
+      else if (state.spellingMode === 'arrow') startArrowRound();
       else startSpellingRound();
     });
   }
 
+  if (els.spellModePhonics) els.spellModePhonics.addEventListener('click', () => setSpellingMode('phonics'));
   if (els.spellModePicture) els.spellModePicture.addEventListener('click', () => setSpellingMode('picture'));
   if (els.spellModeArrow) els.spellModeArrow.addEventListener('click', () => setSpellingMode('arrow'));
 
@@ -2089,12 +2184,20 @@
     updateSoundToggle();
     updateSpellingHearButton();
     updateArrowHearButton();
+    updatePhonicsPlayAzButton();
     if (state.soundOn) playToggleSound();
   }
 
   els.soundToggle.addEventListener('click', onSoundToggleClick);
   if (els.spellingSoundToggle) els.spellingSoundToggle.addEventListener('click', onSoundToggleClick);
+  if (els.phonicsSoundToggle) els.phonicsSoundToggle.addEventListener('click', onSoundToggleClick);
   if (els.arrowSoundToggle) els.arrowSoundToggle.addEventListener('click', onSoundToggleClick);
+
+  if (els.phonicsPlayAzBtn) {
+    els.phonicsPlayAzBtn.addEventListener('click', () => {
+      playPhonicsAlphabet();
+    });
+  }
 
   if (els.arrowSubmitBtn) {
     els.arrowSubmitBtn.addEventListener('click', () => {
@@ -2153,6 +2256,7 @@
 
   initSoundFx();
   initAlphaSounds();
+  initPhonicsSounds();
   loadMathPrefs();
   loadSpellingPrefs();
   syncMathSetupUI();
@@ -2161,6 +2265,7 @@
   updateHintToggle();
   updateSpellingHearButton();
   updateArrowHearButton();
+  updatePhonicsPlayAzButton();
   state.activeGame = 'math';
   pickRandomBg();
   showScreen('home');

@@ -73,7 +73,8 @@
     <fieldset class="setup-fieldset">
       <legend class="setup-legend">Practice style</legend>
       <div class="pick-row" role="group" aria-label="Spelling practice style">
-        <button type="button" class="pick-btn spelling-mode-btn" id="spell-mode-picture" aria-pressed="true">Picture words 🖼️</button>
+        <button type="button" class="pick-btn spelling-mode-btn" id="spell-mode-phonics" aria-pressed="true">Letter sounds 🔊</button>
+        <button type="button" class="pick-btn spelling-mode-btn" id="spell-mode-picture" aria-pressed="false">Picture words 🖼️</button>
         <button type="button" class="pick-btn spelling-mode-btn" id="spell-mode-arrow" aria-pressed="false">Arrow words 🔀</button>
       </div>
     </fieldset>
@@ -93,6 +94,23 @@
     <div class="setup-actions">
       <button type="button" class="secondary-btn" id="spelling-back-btn">← Back</button>
       <button type="button" class="primary-btn" id="spelling-start-btn">Let’s spell! ✏️</button>
+    </div>
+  </div>
+
+  <div id="phonics-play-screen" class="screen screen--play phonics-play" style="display:none;">
+    <div class="play-panel">
+      <div class="question-area phonics-question-area">
+        <div class="toolbar toolbar--spelling-settings" aria-label="Sound settings">
+          <button type="button" id="phonics-sound-toggle" class="sound-toggle sound-toggle--compact" aria-pressed="true">Sound: On</button>
+        </div>
+        <p class="phonics-prompt" id="phonics-prompt">Tap a letter to hear its sound!</p>
+        <div class="phonics-grid" id="phonics-grid" role="group" aria-label="Letters A to Z"></div>
+        <button type="button" class="spell-listen-btn" id="phonics-play-az-btn">
+          <span class="spell-listen-icon" aria-hidden="true">🔊</span>
+          <span class="spell-listen-text">Play A to Z</span>
+        </button>
+        <p class="phonics-hint">Sounds from phonics practice — not letter names.</p>
+      </div>
     </div>
   </div>
 
