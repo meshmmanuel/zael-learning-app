@@ -1907,6 +1907,10 @@
     const value = text === null || text === undefined ? '?' : String(text);
     slot.textContent = value;
     slot.classList.toggle('math-order-num--filled', value !== '?');
+    slot.setAttribute(
+      'aria-label',
+      value === '?' ? 'Blank to fill' : `Answer ${value}, tap to change`,
+    );
   }
 
   function updateOrderStepHint() {
@@ -1916,8 +1920,8 @@
     const filled = q.blankIndices.filter((i) => state.orderAnswers[i] !== undefined).length;
     if (filled >= total) {
       els.mathOrderPrompt.textContent = q.type === 'beforeAfter'
-        ? 'Before & after — tap submit when ready!'
-        : 'Between — tap submit when ready!';
+        ? 'Before & after — tap submit when ready! (tap a filled ? to change)'
+        : 'Between — tap submit when ready! (tap a filled ? to change)';
       return;
     }
     const step = filled + 1;
@@ -1933,6 +1937,28 @@
       const slot = document.getElementById(orderSlotId(i));
       if (slot) slot.classList.toggle('math-order-num--active', i === state.orderActiveBlankIndex);
     });
+  }
+
+  function clearOrderBlankAt(index) {
+    if (state.blocked || !isOrderQuestion(state.currentQ)) return;
+    const q = state.currentQ;
+    if (!q.blankIndices.includes(index)) return;
+
+    const startPos = q.blankIndices.indexOf(index);
+    for (let j = startPos; j < q.blankIndices.length; j++) {
+      const i = q.blankIndices[j];
+      delete state.orderAnswers[i];
+      setOrderSlot(i, null);
+    }
+    state.orderActiveBlankIndex = index;
+    document.querySelectorAll('.num-btn').forEach((b) => {
+      b.classList.remove('selected');
+      b.setAttribute('aria-pressed', 'false');
+    });
+    updateOrderStepHint();
+    highlightActiveOrderSlot();
+    updateSubmitState();
+    playToggleSound();
   }
 
   function renderOrderQuestion() {
@@ -1960,10 +1986,13 @@
         els.mathOrderSequence.appendChild(createOrderNum(value));
         return;
       }
-      const slot = document.createElement('span');
+      const slot = document.createElement('button');
+      slot.type = 'button';
       slot.className = 'math-order-num math-order-num--answer';
       slot.id = orderSlotId(i);
       slot.textContent = '?';
+      slot.setAttribute('aria-label', 'Blank to fill');
+      slot.onclick = () => clearOrderBlankAt(i);
       els.mathOrderSequence.appendChild(slot);
     });
 
@@ -2051,6 +2080,16 @@
   function selectNumber(n, btn) {
     if (state.blocked) return;
     const q = state.currentQ;
+
+    if (!isOrderQuestion(q) && state.selectedAnswer === n && btn.classList.contains('selected')) {
+      state.selectedAnswer = null;
+      if (els.mathBlank) els.mathBlank.textContent = '?';
+      btn.classList.remove('selected');
+      btn.setAttribute('aria-pressed', 'false');
+      updateSubmitState();
+      playToggleSound();
+      return;
+    }
 
     if (isOrderQuestion(q)) {
       const idx = state.orderActiveBlankIndex;
