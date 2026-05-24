@@ -2035,7 +2035,7 @@
     els.numberPicker.innerHTML = '';
     const q = state.currentQ;
     const nums = isOrderQuestion(q)
-      ? [...q.choices].sort((a, b) => a - b)
+      ? shuffle([...q.choices])
       : Array.from({ length: state.maxAnswer + 1 }, (_, i) => i);
     for (const n of nums) {
       const btn = document.createElement('button');
