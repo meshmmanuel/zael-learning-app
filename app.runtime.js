@@ -29,12 +29,28 @@
 
   const ORDER_RANGES = {
     easy: { min: 10, max: 30 },
-    medium: { min: 50, max: 80 },
+    medium: { min: 30, max: 80 },
     hard: { min: 20, max: 99 },
   };
 
+  /** Consecutive number-line layouts: more blanks on medium/hard, not just bigger numbers. */
+  const ORDER_LAYOUT = {
+    easy: {
+      beforeAfter: { length: 3, shownIndices: [1] },
+      between: { length: 3, shownIndices: [0, 2] },
+    },
+    medium: {
+      beforeAfter: { length: 5, shownIndices: [1, 3] },
+      between: { length: 5, shownIndices: [0, 4] },
+    },
+    hard: {
+      beforeAfter: { length: 7, shownIndices: [2, 4] },
+      between: { length: 7, shownIndices: [0, 6] },
+    },
+  };
+
   const MATH_MODES_ARITH = ['mixed', 'add', 'sub'];
-  const MATH_MODES_ORDER = ['before', 'between', 'after', 'orderMixed'];
+  const MATH_MODES_ORDER = ['beforeAfter', 'between'];
   const MATH_MODES_ALL = [...MATH_MODES_ARITH, ...MATH_MODES_ORDER];
 
   const THEMES = [
@@ -281,6 +297,8 @@
     qIndex: 0,
     score: 0,
     selectedAnswer: null,
+    orderAnswers: {},
+    orderActiveBlankIndex: null,
     crossedSet: new Set(),
     placedCount: 0,
     currentQ: null,
@@ -360,10 +378,8 @@
     modeMixed: document.getElementById('math-mode-mixed'),
     modeAdd: document.getElementById('math-mode-add'),
     modeSub: document.getElementById('math-mode-sub'),
-    modeBefore: document.getElementById('math-mode-before'),
+    modeBeforeAfter: document.getElementById('math-mode-before-after'),
     modeBetween: document.getElementById('math-mode-between'),
-    modeAfter: document.getElementById('math-mode-after'),
-    modeOrderMixed: document.getElementById('math-mode-order-mixed'),
     mathDisplay: document.getElementById('math-display'),
     mathArithmeticView: document.getElementById('math-arithmetic-view'),
     mathOrderView: document.getElementById('math-order-view'),
@@ -415,7 +431,7 @@
   }
 
   function isOrderQuestion(q) {
-    return q && (q.type === 'before' || q.type === 'between' || q.type === 'after');
+    return q && (q.type === 'beforeAfter' || q.type === 'between');
   }
 
   function getOrderRange() {
@@ -469,7 +485,11 @@
       const raw = localStorage.getItem(STORAGE.mathPrefs);
       if (!raw) return;
       const data = JSON.parse(raw);
-      if (MATH_MODES_ALL.includes(data.mode)) state.mathMode = data.mode;
+      if (MATH_MODES_ALL.includes(data.mode)) {
+        state.mathMode = data.mode;
+      } else if (data.mode === 'before' || data.mode === 'after' || data.mode === 'orderMixed') {
+        state.mathMode = 'beforeAfter';
+      }
       if (data.difficulty === 'easy' || data.difficulty === 'medium' || data.difficulty === 'hard') {
         state.mathDifficulty = data.difficulty;
       }
@@ -491,10 +511,8 @@
       mixed: els.modeMixed,
       add: els.modeAdd,
       sub: els.modeSub,
-      before: els.modeBefore,
+      beforeAfter: els.modeBeforeAfter,
       between: els.modeBetween,
-      after: els.modeAfter,
-      orderMixed: els.modeOrderMixed,
     };
     Object.values(modeMap).forEach((btn) => {
       if (btn) btn.setAttribute('aria-pressed', 'false');
@@ -664,52 +682,66 @@
     updateAppNav(name);
   }
 
-  function buildOrderChoices(correct, rangeMin, rangeMax) {
-    const pool = new Set([correct]);
-    for (let d = 1; d <= 3; d++) {
-      if (correct - d >= rangeMin) pool.add(correct - d);
-      if (correct + d <= rangeMax) pool.add(correct + d);
+  function buildSequenceChoices(correctValues, sequenceValues, rangeMin, rangeMax) {
+    const correctSet = new Set(correctValues);
+    const extras = new Set();
+    for (const v of sequenceValues) {
+      for (let d = -4; d <= 4; d++) {
+        const n = v + d;
+        if (n >= rangeMin && n <= rangeMax && !correctSet.has(n)) extras.add(n);
+      }
     }
+    const minChoices = Math.max(8, correctSet.size + 2);
     let guard = 0;
-    while (pool.size < 6 && guard < 40) {
-      pool.add(rnd(rangeMin, rangeMax));
+    while (correctSet.size + extras.size < minChoices && guard < 50) {
+      const n = rnd(rangeMin, rangeMax);
+      if (!correctSet.has(n)) extras.add(n);
       guard++;
     }
-    return shuffle([...pool]);
+    const pickedExtras = shuffle([...extras]).slice(0, minChoices - correctSet.size);
+    return shuffle([...correctSet, ...pickedExtras]);
   }
 
   function genOrderQuestion(kind) {
     const { min, max } = getOrderRange();
-    if (kind === 'before') {
-      const n = rnd(min + 1, max);
-      const ans = n - 1;
-      return { type: 'before', n, ans, choices: buildOrderChoices(ans, min, max) };
+    const layout = ORDER_LAYOUT[state.mathDifficulty]?.[kind] || ORDER_LAYOUT.medium[kind];
+    const { length, shownIndices } = layout;
+    const start = rnd(min, max - length + 1);
+    const values = Array.from({ length }, (_, i) => start + i);
+    const shownSet = new Set(shownIndices);
+    const blankIndices = [];
+    const answers = {};
+    for (let i = 0; i < length; i++) {
+      if (!shownSet.has(i)) {
+        blankIndices.push(i);
+        answers[i] = values[i];
+      }
     }
-    if (kind === 'after') {
-      const n = rnd(min, max - 1);
-      const ans = n + 1;
-      return { type: 'after', n, ans, choices: buildOrderChoices(ans, min, max) };
-    }
-    const ans = rnd(min + 1, max - 1);
     return {
-      type: 'between',
-      low: ans - 1,
-      high: ans + 1,
-      ans,
-      choices: buildOrderChoices(ans, min, max),
+      type: kind,
+      values,
+      shownIndices,
+      blankIndices,
+      answers,
+      choices: buildSequenceChoices(Object.values(answers), values, min, max),
     };
+  }
+
+  function orderBlankCount(q) {
+    return q.blankIndices?.length ?? 0;
+  }
+
+  function firstUnfilledBlankIndex(q) {
+    return q.blankIndices.find((i) => state.orderAnswers[i] === undefined) ?? null;
   }
 
   function genQuestions() {
     const total = BASE_CONFIG.totalQuestions;
 
     if (isOrderMode()) {
-      const kinds = state.mathMode === 'orderMixed'
-        ? ['before', 'between', 'after']
-        : [state.mathMode];
       const qs = [];
       for (let i = 0; i < total; i++) {
-        qs.push(genOrderQuestion(kinds[i % kinds.length]));
+        qs.push(genOrderQuestion(state.mathMode));
       }
       return shuffle(qs);
     }
@@ -1849,7 +1881,10 @@
     state.emoji = state.theme.emojis[Math.floor(Math.random() * state.theme.emojis.length)];
     state.questions = genQuestions();
     const orderRound = isOrderMode();
-    state.maxAnswer = Math.max(...state.questions.map((q) => q.ans));
+    state.maxAnswer = Math.max(...state.questions.map((q) => {
+      if (isOrderQuestion(q)) return Math.max(...Object.values(q.answers));
+      return q.ans;
+    }));
     state.maxPickerValue = orderRound
       ? Math.max(...state.questions.flatMap((q) => q.choices))
       : state.maxAnswer;
@@ -1862,18 +1897,42 @@
     loadQuestion();
   }
 
-  function setAnswerBlank(text) {
+  function orderSlotId(index) {
+    return `math-order-slot-${index}`;
+  }
+
+  function setOrderSlot(index, text) {
+    const slot = document.getElementById(orderSlotId(index));
+    if (!slot) return;
     const value = text === null || text === undefined ? '?' : String(text);
-    if (isOrderQuestion(state.currentQ)) {
-      const slot = document.getElementById('math-order-answer-slot');
-      if (slot) {
-        slot.textContent = value;
-        return;
-      }
-      if (els.mathOrderBlank) els.mathOrderBlank.textContent = value;
-    } else if (els.mathBlank) {
-      els.mathBlank.textContent = value;
+    slot.textContent = value;
+    slot.classList.toggle('math-order-num--filled', value !== '?');
+  }
+
+  function updateOrderStepHint() {
+    if (!els.mathOrderPrompt || !isOrderQuestion(state.currentQ)) return;
+    const q = state.currentQ;
+    const total = orderBlankCount(q);
+    const filled = q.blankIndices.filter((i) => state.orderAnswers[i] !== undefined).length;
+    if (filled >= total) {
+      els.mathOrderPrompt.textContent = q.type === 'beforeAfter'
+        ? 'Before & after — tap submit when ready!'
+        : 'Between — tap submit when ready!';
+      return;
     }
+    const step = filled + 1;
+    els.mathOrderPrompt.textContent = q.type === 'beforeAfter'
+      ? `Fill in the missing numbers (${step} of ${total}) ⬅️➡️`
+      : `Fill in the missing numbers (${step} of ${total}) ↔️`;
+  }
+
+  function highlightActiveOrderSlot() {
+    const q = state.currentQ;
+    if (!q?.blankIndices) return;
+    q.blankIndices.forEach((i) => {
+      const slot = document.getElementById(orderSlotId(i));
+      if (slot) slot.classList.toggle('math-order-num--active', i === state.orderActiveBlankIndex);
+    });
   }
 
   function renderOrderQuestion() {
@@ -1881,34 +1940,35 @@
     if (els.mathArithmeticView) els.mathArithmeticView.hidden = true;
     if (els.mathOrderView) els.mathOrderView.hidden = false;
     if (els.mathDisplay) els.mathDisplay.classList.add('math-display--order');
+    if (els.mathOrderBlank) els.mathOrderBlank.hidden = true;
 
-    const prompts = {
-      before: 'What number comes BEFORE?',
-      after: 'What number comes AFTER?',
-      between: 'What number is BETWEEN?',
-    };
-    if (els.mathOrderPrompt) els.mathOrderPrompt.textContent = prompts[q.type] || '';
+    if (els.mathOrderPrompt) {
+      els.mathOrderPrompt.textContent = q.type === 'beforeAfter'
+        ? 'Fill in the numbers before and after!'
+        : 'Fill in the numbers between!';
+    }
 
     if (!els.mathOrderSequence) return;
     els.mathOrderSequence.innerHTML = '';
     els.mathOrderSequence.removeAttribute('aria-hidden');
+    els.mathOrderSequence.classList.toggle('math-order-sequence--long', q.values.length >= 7);
+    const shownSet = new Set(q.shownIndices);
 
-    if (q.type === 'between') {
-      els.mathOrderSequence.appendChild(createOrderNum(q.low));
-      els.mathOrderSequence.appendChild(createOrderGap());
-      const ansSlot = document.createElement('span');
-      ansSlot.className = 'math-order-num math-order-num--answer';
-      ansSlot.id = 'math-order-answer-slot';
-      ansSlot.textContent = '?';
-      els.mathOrderSequence.appendChild(ansSlot);
-      els.mathOrderSequence.appendChild(createOrderGap());
-      els.mathOrderSequence.appendChild(createOrderNum(q.high));
-      if (els.mathOrderBlank) els.mathOrderBlank.hidden = true;
-      return;
-    }
+    q.values.forEach((value, i) => {
+      if (i > 0) els.mathOrderSequence.appendChild(createOrderGap());
+      if (shownSet.has(i)) {
+        els.mathOrderSequence.appendChild(createOrderNum(value));
+        return;
+      }
+      const slot = document.createElement('span');
+      slot.className = 'math-order-num math-order-num--answer';
+      slot.id = orderSlotId(i);
+      slot.textContent = '?';
+      els.mathOrderSequence.appendChild(slot);
+    });
 
-    if (els.mathOrderBlank) els.mathOrderBlank.hidden = false;
-    els.mathOrderSequence.appendChild(createOrderNum(q.n));
+    updateOrderStepHint();
+    highlightActiveOrderSlot();
   }
 
   function createOrderNum(n) {
@@ -1942,6 +2002,8 @@
   function loadQuestion() {
     state.blocked = false;
     state.selectedAnswer = null;
+    state.orderAnswers = {};
+    state.orderActiveBlankIndex = null;
     state.crossedSet.clear();
     state.placedCount = 0;
     state.addGroup1Count = 0;
@@ -1951,11 +2013,14 @@
     const orderQ = isOrderQuestion(state.currentQ);
     els.qLabel.textContent = `Question ${state.qIndex + 1} of ${total}`;
     els.progressFill.style.width = `${((state.qIndex + 1) / total) * 100}%`;
-    setAnswerBlank(null);
     els.feedback.textContent = '';
     els.feedback.className = 'feedback-msg';
-    if (orderQ) renderOrderQuestion();
-    else renderArithmeticQuestion();
+    if (orderQ) {
+      state.orderActiveBlankIndex = firstUnfilledBlankIndex(state.currentQ);
+      renderOrderQuestion();
+    } else {
+      renderArithmeticQuestion();
+    }
     buildNumberPicker();
     if (orderQ) {
       if (els.emojiZone) els.emojiZone.style.display = 'none';
@@ -1985,8 +2050,27 @@
 
   function selectNumber(n, btn) {
     if (state.blocked) return;
+    const q = state.currentQ;
+
+    if (isOrderQuestion(q)) {
+      const idx = state.orderActiveBlankIndex;
+      if (idx === null) return;
+      state.orderAnswers[idx] = n;
+      setOrderSlot(idx, n);
+      state.orderActiveBlankIndex = firstUnfilledBlankIndex(q);
+      document.querySelectorAll('.num-btn').forEach((b) => {
+        b.classList.remove('selected');
+        b.setAttribute('aria-pressed', 'false');
+      });
+      updateOrderStepHint();
+      highlightActiveOrderSlot();
+      updateSubmitState();
+      playSelectSound();
+      return;
+    }
+
     state.selectedAnswer = n;
-    setAnswerBlank(n);
+    if (els.mathBlank) els.mathBlank.textContent = n;
     document.querySelectorAll('.num-btn').forEach((b) => {
       b.classList.remove('selected');
       b.setAttribute('aria-pressed', 'false');
@@ -2143,9 +2227,44 @@
     }
   }
 
+  function isOrderAnswerComplete() {
+    const q = state.currentQ;
+    return q.blankIndices.every((i) => state.orderAnswers[i] !== undefined);
+  }
+
+  function isOrderAnswerCorrect() {
+    const q = state.currentQ;
+    return q.blankIndices.every((i) => state.orderAnswers[i] === q.answers[i]);
+  }
+
+  function showOrderCorrectAnswers() {
+    const q = state.currentQ;
+    q.blankIndices.forEach((i) => setOrderSlot(i, q.answers[i]));
+  }
+
+  function resetOrderAnswersForRetry() {
+    const q = state.currentQ;
+    state.orderAnswers = {};
+    state.orderActiveBlankIndex = firstUnfilledBlankIndex(q);
+    q.blankIndices.forEach((i) => setOrderSlot(i, null));
+    updateOrderStepHint();
+    highlightActiveOrderSlot();
+  }
+
   function checkAnswer() {
     if (state.blocked) return;
-    if (state.selectedAnswer === null) {
+    const orderQ = isOrderQuestion(state.currentQ);
+    if (orderQ && !isOrderAnswerComplete()) {
+      const left = orderBlankCount(state.currentQ) - Object.keys(state.orderAnswers).length;
+      const msg = left > 1
+        ? `Fill in all ${orderBlankCount(state.currentQ)} numbers first! 👆`
+        : 'Fill in the missing number first! 👆';
+      els.feedback.textContent = msg;
+      els.feedback.className = 'feedback-msg wrong';
+      playWrongSound();
+      return;
+    }
+    if (!orderQ && state.selectedAnswer === null) {
       els.feedback.textContent = 'Pick a number first! 👆';
       els.feedback.className = 'feedback-msg wrong';
       playWrongSound();
@@ -2153,8 +2272,7 @@
     }
     state.blocked = true;
     updateSubmitState();
-    const correct = state.selectedAnswer === state.currentQ.ans;
-    const orderQ = isOrderQuestion(state.currentQ);
+    const correct = orderQ ? isOrderAnswerCorrect() : state.selectedAnswer === state.currentQ.ans;
     if (orderQ) state.stats.orderTotal++;
     else if (state.currentQ.type === 'add') state.stats.addTotal++;
     else state.stats.subTotal++;
@@ -2166,7 +2284,8 @@
       state.score++;
       els.feedback.textContent = ['Amazing! 🎉', 'You got it! ⭐', 'Brilliant! 🌟', 'Wonderful! 🎈', 'Super smart! 🦋'][Math.floor(Math.random() * 5)];
       els.feedback.className = 'feedback-msg right';
-      setAnswerBlank(state.currentQ.ans);
+      if (orderQ) showOrderCorrectAnswers();
+      else if (els.mathBlank) els.mathBlank.textContent = state.currentQ.ans;
       if (!orderQ) {
         document.querySelectorAll('.emoji-item,.sub-animal:not(.crossed)').forEach((e) => {
           e.style.animation = 'none';
@@ -2184,6 +2303,11 @@
       setTimeout(() => {
         els.numberPicker.classList.remove('shake');
         state.blocked = false;
+        if (orderQ) resetOrderAnswersForRetry();
+        document.querySelectorAll('.num-btn').forEach((b) => {
+          b.classList.remove('selected');
+          b.setAttribute('aria-pressed', 'false');
+        });
         updateSubmitState();
       }, BASE_CONFIG.wrongAnswerUnlockDelayMs);
     }
@@ -2290,7 +2414,11 @@
   }
 
   function updateSubmitState() {
-    els.submitBtn.disabled = state.blocked || state.selectedAnswer === null;
+    const orderQ = state.currentQ && isOrderQuestion(state.currentQ);
+    const ready = orderQ
+      ? isOrderAnswerComplete()
+      : state.selectedAnswer !== null;
+    els.submitBtn.disabled = state.blocked || !ready;
   }
 
   els.pickMath.addEventListener('click', () => {
@@ -2365,10 +2493,8 @@
   els.modeMixed.addEventListener('click', () => setMathMode('mixed'));
   els.modeAdd.addEventListener('click', () => setMathMode('add'));
   els.modeSub.addEventListener('click', () => setMathMode('sub'));
-  if (els.modeBefore) els.modeBefore.addEventListener('click', () => setMathMode('before'));
+  if (els.modeBeforeAfter) els.modeBeforeAfter.addEventListener('click', () => setMathMode('beforeAfter'));
   if (els.modeBetween) els.modeBetween.addEventListener('click', () => setMathMode('between'));
-  if (els.modeAfter) els.modeAfter.addEventListener('click', () => setMathMode('after'));
-  if (els.modeOrderMixed) els.modeOrderMixed.addEventListener('click', () => setMathMode('orderMixed'));
   els.diffEasy.addEventListener('click', () => setMathDifficulty('easy'));
   els.diffMedium.addEventListener('click', () => setMathDifficulty('medium'));
   els.diffHard.addEventListener('click', () => setMathDifficulty('hard'));

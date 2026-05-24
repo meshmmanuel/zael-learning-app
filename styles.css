@@ -822,9 +822,13 @@ body * {
 .math-display--order { align-items: center; }
 .math-order-view { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; }
 .math-order-prompt { width: 100%; text-align: center; font-size: 15px; font-weight: 800; color: rgba(0,0,0,0.62); text-transform: uppercase; letter-spacing: 0.6px; line-height: 1.35; }
-.math-order-sequence { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 14px; width: 100%; }
+.math-order-sequence { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; width: 100%; }
+.math-order-sequence--long .math-order-num { font-size: clamp(32px, 8vw, 56px); }
+.math-order-sequence--long .math-order-gap { font-size: clamp(22px, 6vw, 32px); }
 .math-order-num { font-family: 'Fredoka One', cursive; font-size: clamp(44px, 12vw, 72px); line-height: 1.1; color: #222; }
 .math-order-num--answer { color: #777; min-width: 1.2em; text-align: center; }
+.math-order-num--answer.math-order-num--active { color: #222; border-bottom: 4px solid rgba(0,0,0,0.45); }
+.math-order-num--answer.math-order-num--filled { color: #222; }
 .math-order-gap { font-family: 'Fredoka One', cursive; font-size: clamp(28px, 8vw, 40px); color: rgba(0,0,0,0.35); line-height: 1; }
 .math-order-blank { text-align: center; width: 100%; }
 .math-row { display: flex; align-items: center; justify-content: flex-end; gap: 10px; width: 100%; flex-wrap: wrap; font-family: 'Fredoka One', cursive; font-size: clamp(44px,12vw,64px); line-height: 1.1; color: #222; }
