@@ -27,6 +27,16 @@
     },
   };
 
+  const ORDER_RANGES = {
+    easy: { min: 10, max: 30 },
+    medium: { min: 50, max: 80 },
+    hard: { min: 20, max: 99 },
+  };
+
+  const MATH_MODES_ARITH = ['mixed', 'add', 'sub'];
+  const MATH_MODES_ORDER = ['before', 'between', 'after', 'orderMixed'];
+  const MATH_MODES_ALL = [...MATH_MODES_ARITH, ...MATH_MODES_ORDER];
+
   const THEMES = [
     { name: 'fruits', emojis: ['🍎', '🍋', '🍇'] },
     { name: 'animals', emojis: ['🐸', '🐶', '🐱'] },
@@ -278,7 +288,8 @@
     maxAnswer: 9,
     soundOn: true,
     hintOn: false,
-    stats: { addCorrect: 0, addTotal: 0, subCorrect: 0, subTotal: 0 },
+    stats: { addCorrect: 0, addTotal: 0, subCorrect: 0, subTotal: 0, orderCorrect: 0, orderTotal: 0 },
+    maxPickerValue: 9,
     keyInputBuffer: '',
     keyInputTimer: null,
     addGroup1Count: 0,
@@ -349,6 +360,17 @@
     modeMixed: document.getElementById('math-mode-mixed'),
     modeAdd: document.getElementById('math-mode-add'),
     modeSub: document.getElementById('math-mode-sub'),
+    modeBefore: document.getElementById('math-mode-before'),
+    modeBetween: document.getElementById('math-mode-between'),
+    modeAfter: document.getElementById('math-mode-after'),
+    modeOrderMixed: document.getElementById('math-mode-order-mixed'),
+    mathDisplay: document.getElementById('math-display'),
+    mathArithmeticView: document.getElementById('math-arithmetic-view'),
+    mathOrderView: document.getElementById('math-order-view'),
+    mathOrderPrompt: document.getElementById('math-order-prompt'),
+    mathOrderSequence: document.getElementById('math-order-sequence'),
+    mathOrderBlank: document.getElementById('math-order-blank'),
+    emojiZone: document.getElementById('emoji-zone'),
     diffEasy: document.getElementById('math-diff-easy'),
     diffMedium: document.getElementById('math-diff-medium'),
     diffHard: document.getElementById('math-diff-hard'),
@@ -387,6 +409,18 @@
   };
 
   const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+
+  function isOrderMode(mode = state.mathMode) {
+    return MATH_MODES_ORDER.includes(mode);
+  }
+
+  function isOrderQuestion(q) {
+    return q && (q.type === 'before' || q.type === 'between' || q.type === 'after');
+  }
+
+  function getOrderRange() {
+    return ORDER_RANGES[state.mathDifficulty] || ORDER_RANGES.medium;
+  }
 
   function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
@@ -435,7 +469,7 @@
       const raw = localStorage.getItem(STORAGE.mathPrefs);
       if (!raw) return;
       const data = JSON.parse(raw);
-      if (data.mode === 'mixed' || data.mode === 'add' || data.mode === 'sub') state.mathMode = data.mode;
+      if (MATH_MODES_ALL.includes(data.mode)) state.mathMode = data.mode;
       if (data.difficulty === 'easy' || data.difficulty === 'medium' || data.difficulty === 'hard') {
         state.mathDifficulty = data.difficulty;
       }
@@ -453,8 +487,18 @@
   }
 
   function syncMathSetupUI() {
-    const modeMap = { mixed: els.modeMixed, add: els.modeAdd, sub: els.modeSub };
-    Object.values(modeMap).forEach((btn) => btn.setAttribute('aria-pressed', 'false'));
+    const modeMap = {
+      mixed: els.modeMixed,
+      add: els.modeAdd,
+      sub: els.modeSub,
+      before: els.modeBefore,
+      between: els.modeBetween,
+      after: els.modeAfter,
+      orderMixed: els.modeOrderMixed,
+    };
+    Object.values(modeMap).forEach((btn) => {
+      if (btn) btn.setAttribute('aria-pressed', 'false');
+    });
     if (modeMap[state.mathMode]) modeMap[state.mathMode].setAttribute('aria-pressed', 'true');
 
     const diffMap = { easy: els.diffEasy, medium: els.diffMedium, hard: els.diffHard };
@@ -620,10 +664,58 @@
     updateAppNav(name);
   }
 
+  function buildOrderChoices(correct, rangeMin, rangeMax) {
+    const pool = new Set([correct]);
+    for (let d = 1; d <= 3; d++) {
+      if (correct - d >= rangeMin) pool.add(correct - d);
+      if (correct + d <= rangeMax) pool.add(correct + d);
+    }
+    let guard = 0;
+    while (pool.size < 6 && guard < 40) {
+      pool.add(rnd(rangeMin, rangeMax));
+      guard++;
+    }
+    return shuffle([...pool]);
+  }
+
+  function genOrderQuestion(kind) {
+    const { min, max } = getOrderRange();
+    if (kind === 'before') {
+      const n = rnd(min + 1, max);
+      const ans = n - 1;
+      return { type: 'before', n, ans, choices: buildOrderChoices(ans, min, max) };
+    }
+    if (kind === 'after') {
+      const n = rnd(min, max - 1);
+      const ans = n + 1;
+      return { type: 'after', n, ans, choices: buildOrderChoices(ans, min, max) };
+    }
+    const ans = rnd(min + 1, max - 1);
+    return {
+      type: 'between',
+      low: ans - 1,
+      high: ans + 1,
+      ans,
+      choices: buildOrderChoices(ans, min, max),
+    };
+  }
+
   function genQuestions() {
+    const total = BASE_CONFIG.totalQuestions;
+
+    if (isOrderMode()) {
+      const kinds = state.mathMode === 'orderMixed'
+        ? ['before', 'between', 'after']
+        : [state.mathMode];
+      const qs = [];
+      for (let i = 0; i < total; i++) {
+        qs.push(genOrderQuestion(kinds[i % kinds.length]));
+      }
+      return shuffle(qs);
+    }
+
     const preset = DIFFICULTY_PRESETS[state.mathDifficulty];
     const qs = [];
-    const total = BASE_CONFIG.totalQuestions;
 
     let addCount = 0;
     let subCount = 0;
@@ -1756,12 +1848,95 @@
     state.theme = THEMES[Math.floor(Math.random() * THEMES.length)];
     state.emoji = state.theme.emojis[Math.floor(Math.random() * state.theme.emojis.length)];
     state.questions = genQuestions();
+    const orderRound = isOrderMode();
     state.maxAnswer = Math.max(...state.questions.map((q) => q.ans));
+    state.maxPickerValue = orderRound
+      ? Math.max(...state.questions.flatMap((q) => q.choices))
+      : state.maxAnswer;
     state.qIndex = 0;
     state.score = 0;
-    state.stats = { addCorrect: 0, addTotal: 0, subCorrect: 0, subTotal: 0 };
+    state.stats = { addCorrect: 0, addTotal: 0, subCorrect: 0, subTotal: 0, orderCorrect: 0, orderTotal: 0 };
+    if (els.hintToggle) els.hintToggle.style.display = orderRound ? 'none' : '';
+    if (els.emojiZone) els.emojiZone.style.display = orderRound ? 'none' : '';
     showScreen('play');
     loadQuestion();
+  }
+
+  function setAnswerBlank(text) {
+    const value = text === null || text === undefined ? '?' : String(text);
+    if (isOrderQuestion(state.currentQ)) {
+      const slot = document.getElementById('math-order-answer-slot');
+      if (slot) {
+        slot.textContent = value;
+        return;
+      }
+      if (els.mathOrderBlank) els.mathOrderBlank.textContent = value;
+    } else if (els.mathBlank) {
+      els.mathBlank.textContent = value;
+    }
+  }
+
+  function renderOrderQuestion() {
+    const q = state.currentQ;
+    if (els.mathArithmeticView) els.mathArithmeticView.hidden = true;
+    if (els.mathOrderView) els.mathOrderView.hidden = false;
+    if (els.mathDisplay) els.mathDisplay.classList.add('math-display--order');
+
+    const prompts = {
+      before: 'What number comes BEFORE?',
+      after: 'What number comes AFTER?',
+      between: 'What number is BETWEEN?',
+    };
+    if (els.mathOrderPrompt) els.mathOrderPrompt.textContent = prompts[q.type] || '';
+
+    if (!els.mathOrderSequence) return;
+    els.mathOrderSequence.innerHTML = '';
+    els.mathOrderSequence.removeAttribute('aria-hidden');
+
+    if (q.type === 'between') {
+      els.mathOrderSequence.appendChild(createOrderNum(q.low));
+      els.mathOrderSequence.appendChild(createOrderGap());
+      const ansSlot = document.createElement('span');
+      ansSlot.className = 'math-order-num math-order-num--answer';
+      ansSlot.id = 'math-order-answer-slot';
+      ansSlot.textContent = '?';
+      els.mathOrderSequence.appendChild(ansSlot);
+      els.mathOrderSequence.appendChild(createOrderGap());
+      els.mathOrderSequence.appendChild(createOrderNum(q.high));
+      if (els.mathOrderBlank) els.mathOrderBlank.hidden = true;
+      return;
+    }
+
+    if (els.mathOrderBlank) els.mathOrderBlank.hidden = false;
+    els.mathOrderSequence.appendChild(createOrderNum(q.n));
+  }
+
+  function createOrderNum(n) {
+    const el = document.createElement('span');
+    el.className = 'math-order-num';
+    el.textContent = n;
+    return el;
+  }
+
+  function createOrderGap() {
+    const el = document.createElement('span');
+    el.className = 'math-order-gap';
+    el.textContent = '·';
+    el.setAttribute('aria-hidden', 'true');
+    return el;
+  }
+
+  function renderArithmeticQuestion() {
+    if (els.mathArithmeticView) els.mathArithmeticView.hidden = false;
+    if (els.mathOrderView) els.mathOrderView.hidden = true;
+    if (els.mathDisplay) els.mathDisplay.classList.remove('math-display--order');
+    if (els.mathOrderSequence) {
+      els.mathOrderSequence.innerHTML = '';
+      els.mathOrderSequence.setAttribute('aria-hidden', 'true');
+    }
+    els.num1Val.textContent = state.currentQ.a;
+    els.opSign.textContent = state.currentQ.type === 'sub' ? '−' : '+';
+    els.num2Val.textContent = state.currentQ.b;
   }
 
   function loadQuestion() {
@@ -1773,22 +1948,31 @@
     state.addGroup2Count = 0;
     state.currentQ = state.questions[state.qIndex];
     const total = BASE_CONFIG.totalQuestions;
+    const orderQ = isOrderQuestion(state.currentQ);
     els.qLabel.textContent = `Question ${state.qIndex + 1} of ${total}`;
     els.progressFill.style.width = `${((state.qIndex + 1) / total) * 100}%`;
-    els.num1Val.textContent = state.currentQ.a;
-    els.opSign.textContent = state.currentQ.type === 'sub' ? '−' : '+';
-    els.num2Val.textContent = state.currentQ.b;
-    els.mathBlank.textContent = '?';
+    setAnswerBlank(null);
     els.feedback.textContent = '';
     els.feedback.className = 'feedback-msg';
+    if (orderQ) renderOrderQuestion();
+    else renderArithmeticQuestion();
     buildNumberPicker();
-    buildEmojiZone();
+    if (orderQ) {
+      if (els.emojiZone) els.emojiZone.style.display = 'none';
+    } else {
+      if (els.emojiZone) els.emojiZone.style.display = '';
+      buildEmojiZone();
+    }
     updateSubmitState();
   }
 
   function buildNumberPicker() {
     els.numberPicker.innerHTML = '';
-    for (let n = 0; n <= state.maxAnswer; n++) {
+    const q = state.currentQ;
+    const nums = isOrderQuestion(q)
+      ? [...q.choices].sort((a, b) => a - b)
+      : Array.from({ length: state.maxAnswer + 1 }, (_, i) => i);
+    for (const n of nums) {
       const btn = document.createElement('button');
       btn.className = 'num-btn';
       btn.type = 'button';
@@ -1802,7 +1986,7 @@
   function selectNumber(n, btn) {
     if (state.blocked) return;
     state.selectedAnswer = n;
-    els.mathBlank.textContent = n;
+    setAnswerBlank(n);
     document.querySelectorAll('.num-btn').forEach((b) => {
       b.classList.remove('selected');
       b.setAttribute('aria-pressed', 'false');
@@ -1970,20 +2154,25 @@
     state.blocked = true;
     updateSubmitState();
     const correct = state.selectedAnswer === state.currentQ.ans;
-    if (state.currentQ.type === 'add') state.stats.addTotal++;
+    const orderQ = isOrderQuestion(state.currentQ);
+    if (orderQ) state.stats.orderTotal++;
+    else if (state.currentQ.type === 'add') state.stats.addTotal++;
     else state.stats.subTotal++;
 
     if (correct) {
-      if (state.currentQ.type === 'add') state.stats.addCorrect++;
+      if (orderQ) state.stats.orderCorrect++;
+      else if (state.currentQ.type === 'add') state.stats.addCorrect++;
       else state.stats.subCorrect++;
       state.score++;
       els.feedback.textContent = ['Amazing! 🎉', 'You got it! ⭐', 'Brilliant! 🌟', 'Wonderful! 🎈', 'Super smart! 🦋'][Math.floor(Math.random() * 5)];
       els.feedback.className = 'feedback-msg right';
-      els.mathBlank.textContent = state.currentQ.ans;
-      document.querySelectorAll('.emoji-item,.sub-animal:not(.crossed)').forEach((e) => {
-        e.style.animation = 'none';
-        setTimeout(() => { e.style.animation = 'bounce 0.5s ease'; }, 10);
-      });
+      setAnswerBlank(state.currentQ.ans);
+      if (!orderQ) {
+        document.querySelectorAll('.emoji-item,.sub-animal:not(.crossed)').forEach((e) => {
+          e.style.animation = 'none';
+          setTimeout(() => { e.style.animation = 'bounce 0.5s ease'; }, 10);
+        });
+      }
       playCelebrationSound();
       if (!prefersReducedMotion) launchConfetti();
       setTimeout(nextQuestion, BASE_CONFIG.nextQuestionDelayMs);
@@ -2019,6 +2208,10 @@
     setBestScore(best);
     const addPct = state.stats.addTotal ? Math.round((state.stats.addCorrect / state.stats.addTotal) * 100) : 0;
     const subPct = state.stats.subTotal ? Math.round((state.stats.subCorrect / state.stats.subTotal) * 100) : 0;
+    const orderPct = state.stats.orderTotal ? Math.round((state.stats.orderCorrect / state.stats.orderTotal) * 100) : 0;
+    const statsLine = isOrderMode()
+      ? `Number order: ${orderPct}%`
+      : `Addition: ${addPct}% · Subtraction: ${subPct}%`;
 
     els.endScreen.innerHTML = `
       <div class="end-trophy">🏆</div>
@@ -2026,7 +2219,7 @@
       <div class="end-score">${state.score} / ${total}</div>
       <div class="end-stars">${stars}</div>
       <div class="best-score">Best for this level: ${best} / ${total}</div>
-      <div class="stats">Addition: ${addPct}% · Subtraction: ${subPct}%</div>
+      <div class="stats">${statsLine}</div>
       <div class="end-actions">
         <button class="play-again-btn" id="play-again-btn" type="button">Play again 🎮</button>
         <button class="secondary-btn" id="change-math-btn" type="button">Change math ⚙️</button>
@@ -2039,6 +2232,8 @@
       pickRandomBg();
       showScreen('mathSetup');
       syncMathSetupUI();
+      if (els.hintToggle) els.hintToggle.style.display = '';
+      if (els.emojiZone) els.emojiZone.style.display = '';
     };
     document.getElementById('home-btn').onclick = () => {
       state.activeGame = 'math';
@@ -2170,6 +2365,10 @@
   els.modeMixed.addEventListener('click', () => setMathMode('mixed'));
   els.modeAdd.addEventListener('click', () => setMathMode('add'));
   els.modeSub.addEventListener('click', () => setMathMode('sub'));
+  if (els.modeBefore) els.modeBefore.addEventListener('click', () => setMathMode('before'));
+  if (els.modeBetween) els.modeBetween.addEventListener('click', () => setMathMode('between'));
+  if (els.modeAfter) els.modeAfter.addEventListener('click', () => setMathMode('after'));
+  if (els.modeOrderMixed) els.modeOrderMixed.addEventListener('click', () => setMathMode('orderMixed'));
   els.diffEasy.addEventListener('click', () => setMathDifficulty('easy'));
   els.diffMedium.addEventListener('click', () => setMathDifficulty('medium'));
   els.diffHard.addEventListener('click', () => setMathDifficulty('hard'));
@@ -2216,7 +2415,7 @@
     state.hintOn = !state.hintOn;
     updateHintToggle();
     if (state.soundOn) playToggleSound();
-    if (state.currentQ) {
+    if (state.currentQ && !isOrderQuestion(state.currentQ)) {
       if (state.currentQ.type === 'add') updateAdditionZone();
       else updateSubtractionZone();
     }
@@ -2236,11 +2435,12 @@
       if (state.keyInputTimer) clearTimeout(state.keyInputTimer);
       state.keyInputTimer = setTimeout(() => { state.keyInputBuffer = ''; }, BASE_CONFIG.keyBufferResetMs);
       let n = Number(state.keyInputBuffer);
-      if (n > state.maxAnswer) {
+      const maxKey = state.maxPickerValue;
+      if (n > maxKey) {
         state.keyInputBuffer = e.key;
         n = Number(state.keyInputBuffer);
       }
-      if (n <= state.maxAnswer) {
+      if (n <= maxKey) {
         const btn = [...document.querySelectorAll('.num-btn')].find((b) => Number(b.textContent) === n);
         if (btn) selectNumber(n, btn);
       }

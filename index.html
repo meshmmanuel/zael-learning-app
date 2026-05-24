@@ -43,11 +43,21 @@
     <p class="screen-sub">Choose how you want to play.</p>
 
     <fieldset class="setup-fieldset">
-      <legend class="setup-legend">What do you want to practice?</legend>
-      <div class="pick-row" role="group" aria-label="Math practice type">
+      <legend class="setup-legend">Adding &amp; taking away</legend>
+      <div class="pick-row" role="group" aria-label="Addition and subtraction">
         <button type="button" class="pick-btn" id="math-mode-mixed" aria-pressed="true">Both ✨</button>
         <button type="button" class="pick-btn" id="math-mode-add" aria-pressed="false">Adding ➕</button>
         <button type="button" class="pick-btn" id="math-mode-sub" aria-pressed="false">Taking away ➖</button>
+      </div>
+    </fieldset>
+
+    <fieldset class="setup-fieldset">
+      <legend class="setup-legend">Number order</legend>
+      <div class="pick-row" role="group" aria-label="Number order practice">
+        <button type="button" class="pick-btn" id="math-mode-before" aria-pressed="false">Before ⬅️</button>
+        <button type="button" class="pick-btn" id="math-mode-between" aria-pressed="false">Between ↔️</button>
+        <button type="button" class="pick-btn" id="math-mode-after" aria-pressed="false">After ➡️</button>
+        <button type="button" class="pick-btn" id="math-mode-order-mixed" aria-pressed="false">All three 🌈</button>
       </div>
     </fieldset>
 
@@ -188,10 +198,17 @@
         <button id="hint-toggle" class="sound-toggle" type="button" aria-pressed="false">Hint: Off</button>
       </div>
       <div class="math-display" id="math-display" aria-live="polite">
-        <div class="math-row"><span id="num1-val">5</span></div>
-        <div class="math-row"><span class="op" id="op-sign">+</span><span id="num2-val">3</span></div>
-        <div class="math-divider"></div>
-        <div class="math-blank" id="math-blank">?</div>
+        <div id="math-arithmetic-view">
+          <div class="math-row"><span id="num1-val">5</span></div>
+          <div class="math-row"><span class="op" id="op-sign">+</span><span id="num2-val">3</span></div>
+          <div class="math-divider"></div>
+          <div class="math-blank" id="math-blank">?</div>
+        </div>
+        <div id="math-order-view" class="math-order-view" hidden>
+          <p class="math-order-prompt" id="math-order-prompt"></p>
+          <div class="math-order-sequence" id="math-order-sequence" aria-hidden="true"></div>
+          <div class="math-blank math-order-blank" id="math-order-blank">?</div>
+        </div>
       </div>
       <div class="emoji-zone" id="emoji-zone">
         <div class="emoji-zone-title" id="emoji-zone-title">Count them all!</div>

@@ -4,7 +4,8 @@ A lightweight browser-based math game for kids.
 
 ## What it does
 - Home screen to pick **Numbers** (math) or **Spelling**.
-- Math setup: choose practice type (both, adding only, taking away only) and difficulty.
+- Math setup: choose **adding & taking away** (both, add only, subtract only) or **number order** (before, between, after, or all three), plus difficulty.
+- Number order uses number-line style questions (e.g. what comes before 67, between 35 and 37) with kid-friendly multiple-choice answers.
 - Spelling setup (in order): **Letter sounds** → **Picture words** → **Arrow words**.
 - **Letter sounds**: tap A–Z to hear phonics sounds from `audio/phonics_audio/` (Consonant + Short Vowel folders), or **Play A to Z**. MP3s are from [Read Naturally](https://www.readnaturally.com) (see `scripts/download_phonics_audio.py` if the folder is empty).
 - Picture spelling: **CVC**, **Blends**, **Digraphs**, or **Mixed** — fill in missing letters with a letter bank (picture + hints). Uses `audio/alphasounds/` for letter names while building words.
