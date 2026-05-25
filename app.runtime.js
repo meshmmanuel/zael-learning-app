@@ -7,7 +7,13 @@
     keyBufferResetMs: 700,
     confettiLifetimeMs: 3000,
     confettiStaggerMs: 40,
+    /** Safety ceiling only — no “stop at the right number” aid. */
+    emojiBuildMax: 30,
   };
+
+  function canAddMoreEmojis(count) {
+    return count < BASE_CONFIG.emojiBuildMax;
+  }
 
   const DIFFICULTY_PRESETS = {
     easy: {
@@ -1966,7 +1972,9 @@
     if (els.mathArithmeticView) els.mathArithmeticView.hidden = true;
     if (els.mathOrderView) els.mathOrderView.hidden = false;
     if (els.mathDisplay) els.mathDisplay.classList.add('math-display--order');
+    if (els.mathArithmeticView) els.mathArithmeticView.hidden = true;
     if (els.mathOrderBlank) els.mathOrderBlank.hidden = true;
+    if (els.mathBlank) els.mathBlank.textContent = '?';
 
     if (els.mathOrderPrompt) {
       els.mathOrderPrompt.textContent = q.type === 'beforeAfter'
@@ -2015,6 +2023,14 @@
     return el;
   }
 
+  function resetMathAnswerBlank() {
+    if (els.mathBlank) els.mathBlank.textContent = '?';
+    if (els.mathOrderBlank) {
+      els.mathOrderBlank.textContent = '?';
+      els.mathOrderBlank.hidden = true;
+    }
+  }
+
   function renderArithmeticQuestion() {
     if (els.mathArithmeticView) els.mathArithmeticView.hidden = false;
     if (els.mathOrderView) els.mathOrderView.hidden = true;
@@ -2023,6 +2039,7 @@
       els.mathOrderSequence.innerHTML = '';
       els.mathOrderSequence.setAttribute('aria-hidden', 'true');
     }
+    resetMathAnswerBlank();
     els.num1Val.textContent = state.currentQ.a;
     els.opSign.textContent = state.currentQ.type === 'sub' ? '−' : '+';
     els.num2Val.textContent = state.currentQ.b;
@@ -2037,6 +2054,7 @@
     state.placedCount = 0;
     state.addGroup1Count = 0;
     state.addGroup2Count = 0;
+    state.keyInputBuffer = '';
     state.currentQ = state.questions[state.qIndex];
     const total = BASE_CONFIG.totalQuestions;
     const orderQ = isOrderQuestion(state.currentQ);
@@ -2127,16 +2145,12 @@
   }
 
   function updateAdditionZone() {
-    const doneA = state.addGroup1Count >= state.currentQ.a;
-    const doneB = state.addGroup2Count >= state.currentQ.b;
-    if (!doneA) els.emojiZoneTitle.textContent = `Build the first group: ${state.currentQ.a}`;
-    else if (!doneB) els.emojiZoneTitle.textContent = `Great! Now build the second group: ${state.currentQ.b}`;
-    else els.emojiZoneTitle.textContent = 'Both groups built! Count them all.';
+    const goalA = state.currentQ.a;
+    const goalB = state.currentQ.b;
+    els.emojiZoneTitle.textContent = `First group: ${goalA}. Second group: ${goalB}. Too many? Tap ➖`;
 
     els.subHint.style.display = state.hintOn ? 'block' : 'none';
-    els.subHint.textContent = doneA && doneB
-      ? `${state.currentQ.a} + ${state.currentQ.b} = ?`
-      : `Progress: ${state.addGroup1Count}/${state.currentQ.a} + ${state.addGroup2Count}/${state.currentQ.b}`;
+    els.subHint.textContent = `${state.addGroup1Count} + ${state.addGroup2Count} — ${goalA} + ${goalB} = ?`;
 
     els.emojiContent.innerHTML = '';
     const wrap = document.createElement('div');
@@ -2166,7 +2180,7 @@
       addBtn.type = 'button';
       addBtn.textContent = '➕';
       addBtn.setAttribute('aria-label', `Add one ${state.emoji}`);
-      addBtn.disabled = count >= target || state.blocked;
+      addBtn.disabled = !canAddMoreEmojis(count) || state.blocked;
       addBtn.onclick = onAdd;
       const removeBtn = document.createElement('button');
       removeBtn.className = 'mini-btn';
@@ -2185,7 +2199,7 @@
     };
 
     wrap.appendChild(createAddCard('First Number', state.currentQ.a, state.addGroup1Count, () => {
-      if (state.blocked || state.addGroup1Count >= state.currentQ.a) return;
+      if (state.blocked || !canAddMoreEmojis(state.addGroup1Count)) return;
       state.addGroup1Count++;
       playAddEmojiSound();
       updateAdditionZone();
@@ -2202,7 +2216,7 @@
     wrap.appendChild(plus);
 
     wrap.appendChild(createAddCard('Second Number', state.currentQ.b, state.addGroup2Count, () => {
-      if (state.blocked || state.addGroup2Count >= state.currentQ.b) return;
+      if (state.blocked || !canAddMoreEmojis(state.addGroup2Count)) return;
       state.addGroup2Count++;
       playAddEmojiSound();
       updateAdditionZone();
@@ -2216,12 +2230,27 @@
     els.emojiContent.appendChild(wrap);
   }
 
+  function removeLastSubEmoji() {
+    if (state.blocked || state.placedCount <= 0) return;
+    const removeIdx = state.placedCount - 1;
+    const newCrossed = new Set();
+    for (const i of state.crossedSet) {
+      if (i < removeIdx) newCrossed.add(i);
+    }
+    state.crossedSet = newCrossed;
+    state.placedCount--;
+    playToggleSound();
+    updateSubtractionZone();
+  }
+
   function updateSubtractionZone() {
+    const takeB = state.currentQ.b;
     const remaining = state.placedCount - state.crossedSet.size;
-    const canAdd = state.placedCount < state.currentQ.a;
-    if (state.placedCount === 0) els.emojiZoneTitle.textContent = `Tap ➕ to add your ${state.emoji}`;
-    else if (canAdd) els.emojiZoneTitle.textContent = `${state.placedCount} added - add more or cross some out!`;
-    else els.emojiZoneTitle.textContent = `Cross out ${state.currentQ.b} to take away!`;
+    if (state.placedCount === 0) {
+      els.emojiZoneTitle.textContent = `Add ${state.emoji}s, then cross out ${takeB}. Too many? Tap ➖`;
+    } else {
+      els.emojiZoneTitle.textContent = `${state.placedCount} ${state.emoji}s — cross out ${takeB}. Extra? Tap ➖`;
+    }
 
     els.subHint.style.display = state.hintOn ? 'block' : 'none';
     els.subHint.textContent = `${state.placedCount} added - ${state.crossedSet.size} crossed out - ${remaining} left`;
@@ -2246,24 +2275,30 @@
     }
     els.emojiContent.appendChild(grid);
 
-    if (canAdd) {
-      const controls = document.createElement('div');
-      controls.className = 'sub-controls';
-      const addBtn = document.createElement('button');
-      addBtn.className = 'add-animal-btn';
-      addBtn.type = 'button';
-      addBtn.textContent = '➕';
-      addBtn.setAttribute('aria-label', `Add one ${state.emoji}`);
-      addBtn.title = `Add a ${state.emoji}`;
-      addBtn.onclick = () => {
-        if (state.blocked || state.placedCount >= state.currentQ.a) return;
-        state.placedCount++;
-        playAddEmojiSound();
-        updateSubtractionZone();
-      };
-      controls.appendChild(addBtn);
-      els.emojiContent.appendChild(controls);
-    }
+    const controls = document.createElement('div');
+    controls.className = 'sub-controls';
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'add-animal-btn';
+    removeBtn.type = 'button';
+    removeBtn.textContent = '➖';
+    removeBtn.setAttribute('aria-label', `Remove last ${state.emoji}`);
+    removeBtn.disabled = state.placedCount <= 0 || state.blocked;
+    removeBtn.onclick = () => removeLastSubEmoji();
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-animal-btn';
+    addBtn.type = 'button';
+    addBtn.textContent = '➕';
+    addBtn.setAttribute('aria-label', `Add one ${state.emoji}`);
+    addBtn.disabled = !canAddMoreEmojis(state.placedCount) || state.blocked;
+    addBtn.onclick = () => {
+      if (state.blocked || !canAddMoreEmojis(state.placedCount)) return;
+      state.placedCount++;
+      playAddEmojiSound();
+      updateSubtractionZone();
+    };
+    controls.appendChild(removeBtn);
+    controls.appendChild(addBtn);
+    els.emojiContent.appendChild(controls);
   }
 
   function isOrderAnswerComplete() {
