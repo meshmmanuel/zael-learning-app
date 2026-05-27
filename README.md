@@ -1,6 +1,6 @@
-# Kids Math Game
+# Kids Learning Playground
 
-A lightweight browser-based math game for kids.
+A lightweight browser-based learning app for kids (math and spelling).
 
 ## What it does
 - Home screen to pick **Numbers** (math) or **Spelling**.
@@ -10,26 +10,49 @@ A lightweight browser-based math game for kids.
 - **Letter sounds**: tap A–Z to hear phonics sounds from `audio/phonics_audio/` (Consonant + Short Vowel folders), or **Play A to Z**. MP3s are from [Read Naturally](https://www.readnaturally.com) (see `scripts/download_phonics_audio.py` if the folder is empty).
 - Picture spelling: **CVC**, **Blends**, **Digraphs**, or **Mixed** — fill in missing letters with a letter bank (picture + hints). Uses `audio/alphasounds/` for letter names while building words.
 - Arrow words: **random** CVC boards each round — follow **colored arrows** from start → middle vowel → end, submit each word, and find every path on the board (3 boards per round).
-- Shows 10 questions per round with the same emoji counting interactions as before.
+- Shows 10 questions per round with emoji counting interactions.
 - Tracks score and best score in local storage (per math setup, with legacy fallback).
 - Spelling best score is saved **per spelling category**.
 - Includes optional sound effects and hints.
 
 ## Project structure
-- `index.html` - app shell
-- `styles.css` - styles and animations
-- `app.runtime.js` - full game logic (works when you open `index.html` from disk)
-- Optional ES module sources (for a local dev server only; not for `file://`):
-  - `config.js`, `state.js`, `dom.js`, `questions.js`, `audio.js`, `storage.js`
+
+| Path | Purpose |
+|------|---------|
+| `index.html` | App shell (screens and controls) |
+| `styles.css` | Layout, themes, animations |
+| `app.runtime.js` | **Shipped bundle** — open `index.html` from disk (`file://`) |
+| `src/` | ES module source (edit here) |
+| `src/main.js` | Entry point |
+| `src/activities/registry.js` | Activity routes — register new homework modes here |
+| `src/config/` | Constants, audio maps, difficulty presets |
+| `src/content/` | Word lists and puzzle data |
+| `src/math/`, `src/spelling/` | Activity logic |
+| `src/router.js` | Screen navigation |
+| `src/bootstrap.js` | Event wiring and startup |
+| `legacy/modules/` | Old standalone module drafts (not used in the build) |
 
 ## Run locally
-Open `index.html` in a browser (double-click or drag into a tab).
 
-### Optional: run with a local server (for ES modules)
-From this folder:
+**Play (no install):** open `index.html` in a browser.
+
+**Develop:** after changing files under `src/`, rebuild the bundle:
 
 ```bash
-python3 -m http.server 8080
+npm install   # once
+npm run build # writes app.runtime.js
+npm run watch # rebuild on save (optional)
 ```
 
-Then open `http://localhost:8080` in the browser.
+Then refresh the browser.
+
+## Adding a new homework activity
+
+1. Add content under `src/content/` if the activity needs word lists or JSON-like data.
+2. Create `src/activities/<name>.js` (or a folder) with setup + play functions.
+3. Register the activity in `src/activities/registry.js` (routes, optional `onLeave`).
+4. Add any new screens to `index.html` and styles to `styles.css`.
+5. Wire buttons in `src/bootstrap.js`.
+6. Run `npm run build` and test on a phone-sized window.
+
+Reuse existing patterns: **pick-one** (number pad), **fill blanks** (spelling slots), **explore** (phonics grid), **path board** (arrow words).

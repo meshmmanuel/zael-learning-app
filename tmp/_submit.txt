@@ -1,0 +1,7 @@
+  const orderQ = state.currentQ && isOrderQuestion(state.currentQ);
+  const ready = orderQ
+    ? isOrderAnswerComplete()
+    : state.selectedAnswer !== null;
+  els.submitBtn.disabled = state.blocked || !ready;
+}
+
