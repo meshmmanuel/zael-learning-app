@@ -35,7 +35,13 @@ export const ACTIVITIES = {
     setupRoute: 'spellingSetup',
     playRoute: 'arrowPlay',
   },
+  measurement: {
+    id: 'measurement',
+    label: 'Size & measure',
+    setupRoute: 'measureSetup',
+    playRoute: 'measurePlay',
+  },
 };
 
 /** Routes that need a “stop round?” confirm before going home. */
-export const PLAY_ROUTES = new Set(['play', 'phonicsPlay', 'spellingPlay', 'arrowPlay']);
+export const PLAY_ROUTES = new Set(['play', 'phonicsPlay', 'spellingPlay', 'arrowPlay', 'measurePlay']);

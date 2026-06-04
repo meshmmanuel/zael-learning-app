@@ -35,6 +35,10 @@
         <span class="subject-tile-icon" aria-hidden="true">🔤</span>
         <span class="subject-tile-label">Spelling</span>
       </button>
+      <button type="button" class="subject-tile" id="pick-measure" aria-label="Size and measurement">
+        <span class="subject-tile-icon" aria-hidden="true">⚖️</span>
+        <span class="subject-tile-label">Size &amp; measure</span>
+      </button>
     </div>
   </div>
 
@@ -102,6 +106,57 @@
     <div class="setup-actions">
       <button type="button" class="secondary-btn" id="spelling-back-btn">← Back</button>
       <button type="button" class="primary-btn" id="spelling-start-btn">Let’s spell! ✏️</button>
+    </div>
+  </div>
+
+  <div id="measure-setup-screen" class="screen screen--setup measure-setup" style="display:none;">
+    <h2 class="screen-title">Size &amp; measure! ⚖️</h2>
+    <p class="screen-sub">Learn heavy, light, and compare on the scale.</p>
+
+    <fieldset class="setup-fieldset">
+      <legend class="setup-legend">What to practice</legend>
+      <div class="pick-row" role="group" aria-label="Measurement practice mode">
+        <button type="button" class="pick-btn" id="measure-mode-mixed" aria-pressed="true">Mixed ✨</button>
+        <button type="button" class="pick-btn" id="measure-mode-heavier" aria-pressed="false">Heavier ⬇️</button>
+        <button type="button" class="pick-btn" id="measure-mode-lighter" aria-pressed="false">Lighter ⬆️</button>
+        <button type="button" class="pick-btn" id="measure-mode-presents" aria-pressed="false">Presents 🎁</button>
+      </div>
+    </fieldset>
+
+    <p class="screen-hint" id="measure-setup-hint">The side that goes down is heavier. The side up in the air is lighter!</p>
+
+    <div class="setup-actions">
+      <button type="button" class="secondary-btn" id="measure-back-btn">← Back</button>
+      <button type="button" class="primary-btn" id="measure-start-btn">Let’s compare! 🎮</button>
+    </div>
+  </div>
+
+  <div id="measure-play-screen" class="screen screen--play measure-play" style="display:none;">
+    <div class="play-panel">
+      <div class="top-bar">
+        <div class="q-label" id="measure-q-label">Question 1 of 10</div>
+        <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="measure-progress-fill" style="width:10%"></div></div>
+      </div>
+      <div class="question-area measure-question-area">
+        <div class="toolbar toolbar--spelling-settings" aria-label="Sound settings">
+          <button type="button" id="measure-sound-toggle" class="sound-toggle sound-toggle--compact" aria-pressed="true">Sound: On</button>
+        </div>
+        <p class="measure-prompt" id="measure-prompt" aria-live="polite">Which is heavier?</p>
+        <p class="measure-hint" id="measure-hint">The side touching the ground is heavier.</p>
+        <div class="measure-scale-wrap">
+          <div class="measure-scale measure-scale--balance measure-scale--tilt-left" id="measure-scale">
+            <div class="measure-stage" aria-hidden="true">
+              <div class="measure-beam">
+                <div class="measure-track">
+                  <div class="measure-sides" id="measure-sides"></div>
+                </div>
+              </div>
+              <div class="measure-pivot" aria-hidden="true"></div>
+            </div>
+          </div>
+        </div>
+        <div class="feedback-msg" id="measure-feedback" aria-live="polite"></div>
+      </div>
     </div>
   </div>
 

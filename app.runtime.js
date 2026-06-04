@@ -27,6 +27,14 @@
     arrowScore: 0,
     arrowListenGen: 0,
     arrowListenPlaying: false,
+    measureMode: "mixed",
+    measureQuestions: [],
+    measureQIndex: 0,
+    measureScore: 0,
+    measureBlocked: false,
+    measureCurrentQ: null,
+    measurePresentStep: "heaviest",
+    measurePresentPicks: {},
     mathMode: "mixed",
     mathDifficulty: "medium",
     theme: null,
@@ -97,6 +105,24 @@
     endScreen: document.getElementById("end-screen"),
     pickMath: document.getElementById("pick-math"),
     pickSpelling: document.getElementById("pick-spelling"),
+    pickMeasure: document.getElementById("pick-measure"),
+    measureSetupScreen: document.getElementById("measure-setup-screen"),
+    measurePlayScreen: document.getElementById("measure-play-screen"),
+    measureModeMixed: document.getElementById("measure-mode-mixed"),
+    measureModeHeavier: document.getElementById("measure-mode-heavier"),
+    measureModeLighter: document.getElementById("measure-mode-lighter"),
+    measureModePresents: document.getElementById("measure-mode-presents"),
+    measureSetupHint: document.getElementById("measure-setup-hint"),
+    measureBackBtn: document.getElementById("measure-back-btn"),
+    measureStartBtn: document.getElementById("measure-start-btn"),
+    measureQLabel: document.getElementById("measure-q-label"),
+    measureProgressFill: document.getElementById("measure-progress-fill"),
+    measurePrompt: document.getElementById("measure-prompt"),
+    measureHint: document.getElementById("measure-hint"),
+    measureScale: document.getElementById("measure-scale"),
+    measureSides: document.getElementById("measure-sides"),
+    measureFeedback: document.getElementById("measure-feedback"),
+    measureSoundToggle: document.getElementById("measure-sound-toggle"),
     spellCatCvc: document.getElementById("spell-cat-cvc"),
     spellCatBlend: document.getElementById("spell-cat-blend"),
     spellCatDigraph: document.getElementById("spell-cat-digraph"),
@@ -262,8 +288,13 @@
     z: "audio/phonics_audio/Consonant/z-zip-buzz.mp3"
   };
   var PHONICS_ALPHABET = "abcdefghijklmnopqrstuvwxyz".split("");
-  var STORAGE = { mathPrefs: "kidsAppV1MathPrefs", spellingPrefs: "kidsAppV1SpellingPrefs" };
+  var STORAGE = {
+    mathPrefs: "kidsAppV1MathPrefs",
+    spellingPrefs: "kidsAppV1SpellingPrefs",
+    measurePrefs: "kidsAppV1MeasurePrefs"
+  };
   var LEGACY_BEST_KEY = "kidsMathV3BestScore";
+  var MEASURE_TOTAL = 10;
   var SPELLING_TOTAL = 10;
   var SPELLING_DECOYS = 2;
   var ARROW_COLOR_IDS = ["red", "green", "blue", "yellow", "black"];
@@ -306,9 +337,15 @@
       label: "Arrow words",
       setupRoute: "spellingSetup",
       playRoute: "arrowPlay"
+    },
+    measurement: {
+      id: "measurement",
+      label: "Size & measure",
+      setupRoute: "measureSetup",
+      playRoute: "measurePlay"
     }
   };
-  var PLAY_ROUTES = /* @__PURE__ */ new Set(["play", "phonicsPlay", "spellingPlay", "arrowPlay"]);
+  var PLAY_ROUTES = /* @__PURE__ */ new Set(["play", "phonicsPlay", "spellingPlay", "arrowPlay", "measurePlay"]);
 
   // src/router.js
   var NAV_TITLE = {
@@ -319,6 +356,8 @@
     phonicsPlay: "Letter sounds",
     spellingPlay: "Spelling \u2014 Practice",
     arrowPlay: "Arrow words \u2014 Practice",
+    measureSetup: "Size & measure \u2014 Set up",
+    measurePlay: "Size & measure \u2014 Practice",
     end: "Round finished!"
   };
   var currentRoute = "home";
@@ -425,6 +464,8 @@
       spellingPlay: els.spellingPlayScreen,
       phonicsPlay: els.phonicsPlayScreen,
       arrowPlay: els.arrowPlayScreen,
+      measureSetup: els.measureSetupScreen,
+      measurePlay: els.measurePlayScreen,
       play: els.mainScreen,
       end: els.endScreen
     };
@@ -443,6 +484,10 @@
       if (screens.phonicsPlay) screens.phonicsPlay.style.display = "flex";
     } else if (name === "arrowPlay") {
       if (screens.arrowPlay) screens.arrowPlay.style.display = "flex";
+    } else if (name === "measureSetup") {
+      if (screens.measureSetup) screens.measureSetup.style.display = "flex";
+    } else if (name === "measurePlay") {
+      if (screens.measurePlay) screens.measurePlay.style.display = "flex";
     } else if (name === "play") {
       screens.play.style.display = "flex";
     } else if (name === "end") {
@@ -806,33 +851,170 @@
     }
   }
 
-  // src/math/setup.js
-  function syncMathSetupUI() {
-    const modeMap = {
-      mixed: els.modeMixed,
-      add: els.modeAdd,
-      sub: els.modeSub,
-      beforeAfter: els.modeBeforeAfter,
-      between: els.modeBetween
-    };
-    Object.values(modeMap).forEach((btn) => {
-      if (btn) btn.setAttribute("aria-pressed", "false");
+  // src/storage/measurement.js
+  function bestMeasureScoreKey() {
+    return `kidsMeasureBest_${state.measureMode}`;
+  }
+  function getMeasureBest() {
+    try {
+      const v = Number(localStorage.getItem(bestMeasureScoreKey()));
+      return Number.isFinite(v) ? v : 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+  function setMeasureBest(v) {
+    try {
+      localStorage.setItem(bestMeasureScoreKey(), String(v));
+    } catch (e) {
+    }
+  }
+  function loadMeasurePrefs() {
+    try {
+      const raw = localStorage.getItem(STORAGE.measurePrefs);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (["mixed", "heavier", "lighter", "presents"].includes(data.mode)) {
+        state.measureMode = data.mode;
+      }
+    } catch (e) {
+    }
+  }
+  function saveMeasurePrefs() {
+    try {
+      localStorage.setItem(STORAGE.measurePrefs, JSON.stringify({ mode: state.measureMode }));
+    } catch (e) {
+    }
+  }
+
+  // src/measurement/setup.js
+  var MODE_BTNS = {
+    mixed: "measureModeMixed",
+    heavier: "measureModeHeavier",
+    lighter: "measureModeLighter",
+    presents: "measureModePresents"
+  };
+  function syncMeasureSetupUI() {
+    Object.entries(MODE_BTNS).forEach(([mode, id]) => {
+      const btn = els[id];
+      if (btn) btn.setAttribute("aria-pressed", state.measureMode === mode ? "true" : "false");
     });
-    if (modeMap[state.mathMode]) modeMap[state.mathMode].setAttribute("aria-pressed", "true");
-    const diffMap = { easy: els.diffEasy, medium: els.diffMedium, hard: els.diffHard };
-    Object.values(diffMap).forEach((btn) => btn.setAttribute("aria-pressed", "false"));
-    if (diffMap[state.mathDifficulty]) diffMap[state.mathDifficulty].setAttribute("aria-pressed", "true");
+    if (els.measureSetupHint) {
+      const hints = {
+        mixed: "10 questions: heavier, lighter, and presents. Heavy makes a side go down; light goes up!",
+        heavier: "Pick the one that is heavier \u2014 look for the side touching the ground.",
+        lighter: "Pick the one that is lighter \u2014 look for the side up in the air.",
+        presents: "Tap the heaviest present (purple), then the lightest (green)."
+      };
+      els.measureSetupHint.textContent = hints[state.measureMode] || hints.mixed;
+    }
   }
-  function setMathMode(mode) {
-    state.mathMode = mode;
-    syncMathSetupUI();
+  function setMeasureMode(mode) {
+    state.measureMode = mode;
+    syncMeasureSetupUI();
     playSelectSound();
   }
-  function setMathDifficulty(diff) {
-    state.mathDifficulty = diff;
-    syncMathSetupUI();
-    playSelectSound();
-  }
+
+  // src/content/measurement-items.js
+  var MEASUREMENT_ITEMS = [
+    {
+      id: "seesaw-girl-boy",
+      types: ["heavier", "mixed"],
+      scene: "seesaw",
+      promptHeavier: "Who is heavier?",
+      promptLighter: "Who is lighter?",
+      left: { emoji: "\u{1F467}", label: "Girl" },
+      right: { emoji: "\u{1F466}", label: "Boy" },
+      heavySide: "left"
+    },
+    {
+      id: "cow-chick",
+      types: ["lighter", "mixed"],
+      scene: "balance",
+      promptHeavier: "Which animal is heavier?",
+      promptLighter: "Which animal is lighter?",
+      left: { emoji: "\u{1F404}", label: "Cow" },
+      right: { emoji: "\u{1F425}", label: "Chick" },
+      heavySide: "left"
+    },
+    {
+      id: "car-feather",
+      types: ["intro", "mixed"],
+      scene: "balance",
+      intro: true,
+      left: { emoji: "\u{1F697}", label: "Car", caption: "heavy" },
+      right: { emoji: "\u{1FAB6}", label: "Feather", caption: "light" },
+      heavySide: "left"
+    },
+    {
+      id: "presents-small-big",
+      types: ["presents", "mixed"],
+      scene: "balance",
+      promptPresents: "Tap the heaviest present, then the lightest.",
+      left: { emoji: "\u{1F381}", label: "Small present", sizeClass: "measure-item--small" },
+      right: { emoji: "\u{1F381}", label: "Big present", sizeClass: "measure-item--large" },
+      heavySide: "right"
+    },
+    {
+      id: "rock-balloon",
+      types: ["heavier", "mixed"],
+      scene: "balance",
+      promptHeavier: "Which is heavier?",
+      promptLighter: "Which is lighter?",
+      left: { emoji: "\u{1FAA8}", label: "Rock" },
+      right: { emoji: "\u{1F388}", label: "Balloon" },
+      heavySide: "left"
+    },
+    {
+      id: "elephant-mouse",
+      types: ["lighter", "mixed"],
+      scene: "balance",
+      promptHeavier: "Which animal is heavier?",
+      promptLighter: "Which animal is lighter?",
+      left: { emoji: "\u{1F418}", label: "Elephant" },
+      right: { emoji: "\u{1F42D}", label: "Mouse" },
+      heavySide: "left"
+    },
+    {
+      id: "presents-tall-short",
+      types: ["presents", "mixed"],
+      scene: "balance",
+      promptPresents: "Tap the heaviest present, then the lightest.",
+      left: { emoji: "\u{1F381}", label: "Tall present", sizeClass: "measure-item--large" },
+      right: { emoji: "\u{1F381}", label: "Short present", sizeClass: "measure-item--small" },
+      heavySide: "left"
+    },
+    {
+      id: "dog-kitten",
+      types: ["heavier", "mixed"],
+      scene: "seesaw",
+      promptHeavier: "Who is heavier?",
+      promptLighter: "Who is lighter?",
+      left: { emoji: "\u{1F415}", label: "Dog" },
+      right: { emoji: "\u{1F431}", label: "Kitten" },
+      heavySide: "left"
+    },
+    {
+      id: "book-stack",
+      types: ["lighter", "mixed"],
+      scene: "balance",
+      promptHeavier: "Which is heavier?",
+      promptLighter: "Which is lighter?",
+      left: { emoji: "\u{1F4DA}", label: "Thick book" },
+      right: { emoji: "\u{1F4D6}", label: "Thin book" },
+      heavySide: "left"
+    },
+    {
+      id: "watermelon-apple",
+      types: ["heavier", "mixed"],
+      scene: "balance",
+      promptHeavier: "Which fruit is heavier?",
+      promptLighter: "Which fruit is lighter?",
+      left: { emoji: "\u{1F349}", label: "Watermelon" },
+      right: { emoji: "\u{1F34E}", label: "Apple" },
+      heavySide: "left"
+    }
+  ];
 
   // src/ui/effects.js
   function launchConfetti(count = 30) {
@@ -876,6 +1058,280 @@
     if (ratio >= 0.9) return "\u2B50\u2B50\u2B50";
     if (ratio >= 0.6) return "\u2B50\u2B50";
     return "\u2B50";
+  }
+
+  // src/measurement/play.js
+  function resolveQuestionType(item) {
+    if (state.measureMode === "presents") return "presents";
+    if (state.measureMode === "heavier") return "heavier";
+    if (state.measureMode === "lighter") return "lighter";
+    if (item.types.includes("presents") && Math.random() < 0.25) return "presents";
+    if (Math.random() < 0.5) return "heavier";
+    return "lighter";
+  }
+  function pickMeasureQuestions() {
+    const pool = MEASUREMENT_ITEMS.filter((item) => {
+      if (item.intro) return false;
+      if (state.measureMode === "mixed") return true;
+      return item.types.includes(state.measureMode);
+    });
+    const picked = shuffle([...pool]).slice(0, MEASURE_TOTAL);
+    while (picked.length < MEASURE_TOTAL && MEASUREMENT_ITEMS.length) {
+      picked.push(MEASUREMENT_ITEMS[picked.length % MEASUREMENT_ITEMS.length]);
+    }
+    return picked.slice(0, MEASURE_TOTAL).map((item) => ({
+      item,
+      qType: resolveQuestionType(item)
+    }));
+  }
+  function promptFor(q) {
+    const { item, qType } = q;
+    if (qType === "presents") return item.promptPresents || "Tap the heaviest, then the lightest.";
+    if (qType === "lighter") return item.promptLighter || "Which is lighter?";
+    return item.promptHeavier || "Which is heavier?";
+  }
+  function correctSideFor(q) {
+    const heavy = q.item.heavySide;
+    if (q.qType === "lighter") return heavy === "left" ? "right" : "left";
+    return heavy;
+  }
+  function startMeasureRound() {
+    state.activeGame = "measurement";
+    saveMeasurePrefs();
+    pickRandomBg();
+    state.measureQuestions = pickMeasureQuestions();
+    state.measureQIndex = 0;
+    state.measureScore = 0;
+    showScreen("measurePlay");
+    loadMeasureQuestion();
+  }
+  function loadMeasureQuestion() {
+    state.measureBlocked = false;
+    state.measurePresentStep = "heaviest";
+    state.measurePresentPicks = {};
+    const q = state.measureQuestions[state.measureQIndex];
+    state.measureCurrentQ = q;
+    els.measureQLabel.textContent = `Question ${state.measureQIndex + 1} of ${MEASURE_TOTAL}`;
+    els.measureProgressFill.style.width = `${(state.measureQIndex + 1) / MEASURE_TOTAL * 100}%`;
+    els.measurePrompt.textContent = promptFor(q);
+    els.measureFeedback.textContent = "";
+    els.measureFeedback.className = "feedback-msg";
+    els.measureHint.textContent = q.qType === "presents" ? "First tap the heaviest (purple), then the lightest (green)." : "Tip: the side touching the ground is heavier.";
+    renderMeasureScene(q);
+  }
+  function renderMeasureScene(q) {
+    const { item, qType } = q;
+    const heavySide = item.heavySide;
+    const tiltClass = heavySide === "left" ? "measure-scale--tilt-left" : "measure-scale--tilt-right";
+    const sceneClass = item.scene === "seesaw" ? "measure-scale--seesaw" : "measure-scale--balance";
+    els.measureScale.className = `measure-scale ${sceneClass} ${tiltClass}`;
+    const isSeesaw = item.scene === "seesaw";
+    const sides = [
+      { key: "left", data: item.left },
+      { key: "right", data: item.right }
+    ];
+    els.measureSides.innerHTML = "";
+    els.measureSides.className = isSeesaw ? "measure-sides measure-sides--seesaw" : "measure-sides measure-sides--balance";
+    sides.forEach(({ key, data }) => {
+      const wrap = document.createElement("div");
+      wrap.className = `measure-side measure-side--${key}`;
+      const choice = document.createElement("button");
+      choice.type = "button";
+      choice.className = isSeesaw ? "measure-seat measure-choice" : "measure-platform measure-choice";
+      choice.dataset.side = key;
+      choice.setAttribute("aria-label", data.label);
+      choice.addEventListener("click", () => onMeasurePick(key));
+      const figure = document.createElement("div");
+      figure.className = `measure-item ${data.sizeClass || ""}`.trim();
+      figure.textContent = data.emoji;
+      figure.setAttribute("aria-hidden", "true");
+      choice.appendChild(figure);
+      if (data.caption) {
+        const cap = document.createElement("span");
+        cap.className = "measure-caption";
+        cap.textContent = data.caption;
+        choice.appendChild(cap);
+      }
+      wrap.appendChild(choice);
+      els.measureSides.appendChild(wrap);
+    });
+  }
+  function markMeasureChoice(side, kind) {
+    const choice = els.measureSides.querySelector(`.measure-choice[data-side="${side}"]`);
+    if (!choice) return;
+    choice.classList.remove("measure-choice--purple", "measure-choice--green", "measure-choice--correct", "measure-choice--wrong");
+    if (kind === "purple") choice.classList.add("measure-choice--purple");
+    if (kind === "green") choice.classList.add("measure-choice--green");
+    if (kind === "correct") choice.classList.add("measure-choice--correct");
+    if (kind === "wrong") choice.classList.add("measure-choice--wrong");
+  }
+  function clearMeasureChoiceMarks() {
+    els.measureSides.querySelectorAll(".measure-choice").forEach((el) => {
+      el.classList.remove("measure-choice--purple", "measure-choice--green", "measure-choice--correct", "measure-choice--wrong");
+    });
+  }
+  function onMeasurePick(side) {
+    if (state.measureBlocked) return;
+    const q = state.measureCurrentQ;
+    if (!q) return;
+    playSelectSound();
+    if (q.qType === "presents") {
+      handlePresentPick(side);
+      return;
+    }
+    const correct = correctSideFor(q);
+    if (side === correct) {
+      state.measureBlocked = true;
+      state.measureScore++;
+      markMeasureChoice(side, "correct");
+      els.measureFeedback.textContent = ["Yes! \u{1F389}", "You got it! \u2B50", "Super! \u{1F31F}"][Math.floor(Math.random() * 3)];
+      els.measureFeedback.className = "feedback-msg right";
+      playCelebrationSound();
+      if (!prefersReducedMotion) launchConfetti();
+      setTimeout(nextMeasureQuestion, BASE_CONFIG2.nextQuestionDelayMs);
+    } else {
+      state.measureBlocked = true;
+      markMeasureChoice(side, "wrong");
+      els.measureFeedback.textContent = "Look at which side is down \u2014 that one is heavier! Try again \u{1F4AA}";
+      els.measureFeedback.className = "feedback-msg wrong";
+      playWrongSound();
+      setTimeout(() => {
+        state.measureBlocked = false;
+        clearMeasureChoiceMarks();
+        els.measureFeedback.textContent = "";
+        els.measureFeedback.className = "feedback-msg";
+      }, BASE_CONFIG2.wrongAnswerUnlockDelayMs);
+    }
+  }
+  function handlePresentPick(side) {
+    const heavy = state.measureCurrentQ.item.heavySide;
+    const light = heavy === "left" ? "right" : "left";
+    if (state.measurePresentStep === "heaviest") {
+      if (side !== heavy) {
+        state.measureBlocked = true;
+        markMeasureChoice(side, "wrong");
+        els.measureFeedback.textContent = "The heaviest goes down on the scale. Try the other one!";
+        els.measureFeedback.className = "feedback-msg wrong";
+        playWrongSound();
+        setTimeout(() => {
+          state.measureBlocked = false;
+          clearMeasureChoiceMarks();
+          els.measureFeedback.textContent = "";
+        }, BASE_CONFIG2.wrongAnswerUnlockDelayMs);
+        return;
+      }
+      state.measurePresentPicks.heaviest = side;
+      markMeasureChoice(side, "purple");
+      state.measurePresentStep = "lightest";
+      els.measureFeedback.textContent = "Great! Now tap the lightest present.";
+      els.measureFeedback.className = "feedback-msg";
+      playSelectSound();
+      return;
+    }
+    if (state.measurePresentStep === "lightest") {
+      if (side !== light) {
+        state.measureBlocked = true;
+        markMeasureChoice(side, "wrong");
+        els.measureFeedback.textContent = "The lightest side is up high. Try the other present!";
+        els.measureFeedback.className = "feedback-msg wrong";
+        playWrongSound();
+        setTimeout(() => {
+          state.measureBlocked = false;
+          clearMeasureChoiceMarks();
+          if (state.measurePresentPicks.heaviest) {
+            markMeasureChoice(state.measurePresentPicks.heaviest, "purple");
+          }
+          els.measureFeedback.textContent = "Now tap the lightest present.";
+        }, BASE_CONFIG2.wrongAnswerUnlockDelayMs);
+        return;
+      }
+      state.measurePresentPicks.lightest = side;
+      markMeasureChoice(side, "green");
+      state.measureBlocked = true;
+      state.measureScore++;
+      els.measureFeedback.textContent = ["Perfect! \u{1F389}", "Both right! \u2B50"][Math.floor(Math.random() * 2)];
+      els.measureFeedback.className = "feedback-msg right";
+      playCelebrationSound();
+      if (!prefersReducedMotion) launchConfetti();
+      setTimeout(nextMeasureQuestion, BASE_CONFIG2.nextQuestionDelayMs);
+    }
+  }
+  function nextMeasureQuestion() {
+    state.measureQIndex++;
+    if (state.measureQIndex >= MEASURE_TOTAL) {
+      showMeasureEnd();
+      return;
+    }
+    loadMeasureQuestion();
+  }
+  var MODE_LABELS = {
+    mixed: "Mixed",
+    heavier: "Heavier",
+    lighter: "Lighter",
+    presents: "Presents"
+  };
+  function showMeasureEnd() {
+    showScreen("end");
+    const total = MEASURE_TOTAL;
+    const stars = starLineForScore(state.measureScore, total);
+    const msg = state.measureScore === total ? "PERFECT!" : state.measureScore >= Math.ceil(total * 0.8) ? "Amazing!" : state.measureScore >= Math.ceil(total * 0.5) ? "Great job!" : "Keep going!";
+    const best = Math.max(getMeasureBest(), state.measureScore);
+    setMeasureBest(best);
+    const modeLabel = MODE_LABELS[state.measureMode] || "Mixed";
+    els.endScreen.innerHTML = `
+    <div class="end-trophy">\u{1F3C6}</div>
+    <div class="end-title">${msg}</div>
+    <div class="end-score">${state.measureScore} / ${total}</div>
+    <div class="end-stars">${stars}</div>
+    <div class="best-score">Best (${modeLabel}): ${best} / ${total}</div>
+    <div class="stats">Size &amp; measure round complete \xB7 ${modeLabel}</div>
+    <div class="end-actions">
+      <button class="play-again-btn" id="play-again-btn" type="button">Play again \u{1F3AE}</button>
+      <button class="secondary-btn" id="change-measure-btn" type="button">Change mode \u2699\uFE0F</button>
+      <button class="secondary-btn" id="home-btn" type="button">Home \u{1F3E0}</button>
+    </div>
+  `;
+    document.getElementById("play-again-btn").onclick = () => startMeasureRound();
+    document.getElementById("change-measure-btn").onclick = () => {
+      pickRandomBg();
+      showScreen("measureSetup");
+      syncMeasureSetupUI();
+    };
+    document.getElementById("home-btn").onclick = () => {
+      state.activeGame = "math";
+      requestGoHome();
+    };
+    if (!prefersReducedMotion) launchConfetti(60);
+    if (state.measureScore === total) playSound("endPerfect", playCelebrationSound);
+    else playSound("endTryAgain", playWrongSound);
+  }
+
+  // src/math/setup.js
+  function syncMathSetupUI() {
+    const modeMap = {
+      mixed: els.modeMixed,
+      add: els.modeAdd,
+      sub: els.modeSub,
+      beforeAfter: els.modeBeforeAfter,
+      between: els.modeBetween
+    };
+    Object.values(modeMap).forEach((btn) => {
+      if (btn) btn.setAttribute("aria-pressed", "false");
+    });
+    if (modeMap[state.mathMode]) modeMap[state.mathMode].setAttribute("aria-pressed", "true");
+    const diffMap = { easy: els.diffEasy, medium: els.diffMedium, hard: els.diffHard };
+    Object.values(diffMap).forEach((btn) => btn.setAttribute("aria-pressed", "false"));
+    if (diffMap[state.mathDifficulty]) diffMap[state.mathDifficulty].setAttribute("aria-pressed", "true");
+  }
+  function setMathMode(mode) {
+    state.mathMode = mode;
+    syncMathSetupUI();
+    playSelectSound();
+  }
+  function setMathDifficulty(diff) {
+    state.mathDifficulty = diff;
+    syncMathSetupUI();
+    playSelectSound();
   }
 
   // src/math/questions.js
@@ -2405,6 +2861,31 @@
         showScreen("spellingSetup");
       });
     }
+    if (els.pickMeasure) {
+      els.pickMeasure.addEventListener("click", () => {
+        playSelectSound();
+        pickRandomBg();
+        loadMeasurePrefs();
+        syncMeasureSetupUI();
+        showScreen("measureSetup");
+      });
+    }
+    if (els.measureBackBtn) {
+      els.measureBackBtn.addEventListener("click", () => {
+        playToggleSound2();
+        requestGoHome();
+      });
+    }
+    if (els.measureStartBtn) {
+      els.measureStartBtn.addEventListener("click", () => {
+        playSubmitSound();
+        startMeasureRound();
+      });
+    }
+    if (els.measureModeMixed) els.measureModeMixed.addEventListener("click", () => setMeasureMode("mixed"));
+    if (els.measureModeHeavier) els.measureModeHeavier.addEventListener("click", () => setMeasureMode("heavier"));
+    if (els.measureModeLighter) els.measureModeLighter.addEventListener("click", () => setMeasureMode("lighter"));
+    if (els.measureModePresents) els.measureModePresents.addEventListener("click", () => setMeasureMode("presents"));
     if (els.spellingBackBtn) {
       els.spellingBackBtn.addEventListener("click", () => {
         playToggleSound2();
@@ -2472,6 +2953,7 @@
     if (els.spellingSoundToggle) els.spellingSoundToggle.addEventListener("click", onSoundToggleClick);
     if (els.phonicsSoundToggle) els.phonicsSoundToggle.addEventListener("click", onSoundToggleClick);
     if (els.arrowSoundToggle) els.arrowSoundToggle.addEventListener("click", onSoundToggleClick);
+    if (els.measureSoundToggle) els.measureSoundToggle.addEventListener("click", onSoundToggleClick);
     if (els.phonicsPlayAzBtn) {
       els.phonicsPlayAzBtn.addEventListener("click", () => {
         playPhonicsAlphabet();
@@ -2537,8 +3019,10 @@
     initPhonicsSounds();
     loadMathPrefs();
     loadSpellingPrefs();
+    loadMeasurePrefs();
     syncMathSetupUI();
     syncSpellingSetupUI();
+    syncMeasureSetupUI();
     updateSoundToggle();
     updateHintToggle();
     updateSpellingHearButton();

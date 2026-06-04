@@ -16,6 +16,9 @@ import {
 } from './audio/index.js';
 import { loadMathPrefs } from './storage/math.js';
 import { loadSpellingPrefs } from './storage/spelling.js';
+import { loadMeasurePrefs } from './storage/measurement.js';
+import { syncMeasureSetupUI, setMeasureMode } from './measurement/setup.js';
+import { startMeasureRound } from './measurement/play.js';
 import { syncMathSetupUI, setMathMode, setMathDifficulty } from './math/setup.js';
 import {
   startMathRound,
@@ -57,6 +60,35 @@ export function wireApp() {
       showScreen('spellingSetup');
     });
   }
+
+  if (els.pickMeasure) {
+    els.pickMeasure.addEventListener('click', () => {
+      playSelectSound();
+      pickRandomBg();
+      loadMeasurePrefs();
+      syncMeasureSetupUI();
+      showScreen('measureSetup');
+    });
+  }
+
+  if (els.measureBackBtn) {
+    els.measureBackBtn.addEventListener('click', () => {
+      playToggleSound();
+      requestGoHome();
+    });
+  }
+
+  if (els.measureStartBtn) {
+    els.measureStartBtn.addEventListener('click', () => {
+      playSubmitSound();
+      startMeasureRound();
+    });
+  }
+
+  if (els.measureModeMixed) els.measureModeMixed.addEventListener('click', () => setMeasureMode('mixed'));
+  if (els.measureModeHeavier) els.measureModeHeavier.addEventListener('click', () => setMeasureMode('heavier'));
+  if (els.measureModeLighter) els.measureModeLighter.addEventListener('click', () => setMeasureMode('lighter'));
+  if (els.measureModePresents) els.measureModePresents.addEventListener('click', () => setMeasureMode('presents'));
 
   if (els.spellingBackBtn) {
     els.spellingBackBtn.addEventListener('click', () => {
@@ -137,6 +169,7 @@ export function wireApp() {
   if (els.spellingSoundToggle) els.spellingSoundToggle.addEventListener('click', onSoundToggleClick);
   if (els.phonicsSoundToggle) els.phonicsSoundToggle.addEventListener('click', onSoundToggleClick);
   if (els.arrowSoundToggle) els.arrowSoundToggle.addEventListener('click', onSoundToggleClick);
+  if (els.measureSoundToggle) els.measureSoundToggle.addEventListener('click', onSoundToggleClick);
 
   if (els.phonicsPlayAzBtn) {
     els.phonicsPlayAzBtn.addEventListener('click', () => {
@@ -209,8 +242,10 @@ export function initApp() {
   initPhonicsSounds();
   loadMathPrefs();
   loadSpellingPrefs();
+  loadMeasurePrefs();
   syncMathSetupUI();
   syncSpellingSetupUI();
+  syncMeasureSetupUI();
   updateSoundToggle();
   updateHintToggle();
   updateSpellingHearButton();

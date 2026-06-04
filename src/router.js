@@ -11,6 +11,8 @@ export const NAV_TITLE = {
   phonicsPlay: 'Letter sounds',
   spellingPlay: 'Spelling — Practice',
   arrowPlay: 'Arrow words — Practice',
+  measureSetup: 'Size & measure — Set up',
+  measurePlay: 'Size & measure — Practice',
   end: 'Round finished!',
 };
 
@@ -133,6 +135,8 @@ export function showScreen(name) {
     spellingPlay: els.spellingPlayScreen,
     phonicsPlay: els.phonicsPlayScreen,
     arrowPlay: els.arrowPlayScreen,
+    measureSetup: els.measureSetupScreen,
+    measurePlay: els.measurePlayScreen,
     play: els.mainScreen,
     end: els.endScreen,
   };
@@ -151,6 +155,10 @@ export function showScreen(name) {
     if (screens.phonicsPlay) screens.phonicsPlay.style.display = 'flex';
   } else if (name === 'arrowPlay') {
     if (screens.arrowPlay) screens.arrowPlay.style.display = 'flex';
+  } else if (name === 'measureSetup') {
+    if (screens.measureSetup) screens.measureSetup.style.display = 'flex';
+  } else if (name === 'measurePlay') {
+    if (screens.measurePlay) screens.measurePlay.style.display = 'flex';
   } else if (name === 'play') {
     screens.play.style.display = 'flex';
   } else if (name === 'end') {

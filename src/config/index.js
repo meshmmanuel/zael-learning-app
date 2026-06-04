@@ -123,8 +123,15 @@ export const PHONICS_SOUND_SRC = {
 
 export const PHONICS_ALPHABET = 'abcdefghijklmnopqrstuvwxyz'.split('');
 
-export const STORAGE = { mathPrefs: 'kidsAppV1MathPrefs', spellingPrefs: 'kidsAppV1SpellingPrefs' };
+export const STORAGE = {
+  mathPrefs: 'kidsAppV1MathPrefs',
+  spellingPrefs: 'kidsAppV1SpellingPrefs',
+  measurePrefs: 'kidsAppV1MeasurePrefs',
+};
 export const LEGACY_BEST_KEY = 'kidsMathV3BestScore';
+
+/** Same round length as math (totalQuestions) and spelling. */
+export const MEASURE_TOTAL = 10;
 
 export const SPELLING_TOTAL = 10;
 export const SPELLING_DECOYS = 2;
