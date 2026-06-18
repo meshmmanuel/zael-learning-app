@@ -209,7 +209,7 @@
   var ORDER_RANGES = {
     easy: { min: 10, max: 30 },
     medium: { min: 30, max: 80 },
-    hard: { min: 20, max: 99 }
+    hard: { min: 100, max: 999 }
   };
   var ORDER_LAYOUT = {
     easy: {
