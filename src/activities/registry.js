@@ -41,7 +41,17 @@ export const ACTIVITIES = {
     setupRoute: 'measureSetup',
     playRoute: 'measurePlay',
   },
+  bigwords: {
+    id: 'bigwords',
+    label: 'Big words → small words',
+    setupRoute: 'bigwordsSetup',
+    playRoute: 'bigwordsPlay',
+    onLeave(state) {
+      state.bigwordsListenGen += 1;
+      state.bigwordsListenPlaying = false;
+    },
+  },
 };
 
 /** Routes that need a “stop round?” confirm before going home. */
-export const PLAY_ROUTES = new Set(['play', 'phonicsPlay', 'spellingPlay', 'arrowPlay', 'measurePlay']);
+export const PLAY_ROUTES = new Set(['play', 'phonicsPlay', 'spellingPlay', 'arrowPlay', 'measurePlay', 'bigwordsPlay']);

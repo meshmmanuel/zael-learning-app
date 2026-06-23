@@ -35,6 +35,13 @@
     measureCurrentQ: null,
     measurePresentStep: "heaviest",
     measurePresentPicks: {},
+    bigwordsDifficulty: "medium",
+    bigwordsEntries: [],
+    bigwordsQIndex: 0,
+    bigwordsCurrent: null,
+    bigwordsActiveChunk: null,
+    bigwordsListenGen: 0,
+    bigwordsListenPlaying: false,
     mathMode: "mixed",
     mathDifficulty: "medium",
     theme: null,
@@ -106,6 +113,23 @@
     pickMath: document.getElementById("pick-math"),
     pickSpelling: document.getElementById("pick-spelling"),
     pickMeasure: document.getElementById("pick-measure"),
+    pickBigwords: document.getElementById("pick-bigwords"),
+    bigwordsSetupScreen: document.getElementById("bigwords-setup-screen"),
+    bigwordsPlayScreen: document.getElementById("bigwords-play-screen"),
+    bigwordsDiffEasy: document.getElementById("bigwords-diff-easy"),
+    bigwordsDiffMedium: document.getElementById("bigwords-diff-medium"),
+    bigwordsDiffHard: document.getElementById("bigwords-diff-hard"),
+    bigwordsSetupHint: document.getElementById("bigwords-setup-hint"),
+    bigwordsBackBtn: document.getElementById("bigwords-back-btn"),
+    bigwordsStartBtn: document.getElementById("bigwords-start-btn"),
+    bigwordsQLabel: document.getElementById("bigwords-q-label"),
+    bigwordsProgressFill: document.getElementById("bigwords-progress-fill"),
+    bigwordsWord: document.getElementById("bigwords-word"),
+    bigwordsChunks: document.getElementById("bigwords-chunks"),
+    bigwordsAdultHint: document.getElementById("bigwords-adult-hint"),
+    bigwordsRepeatBtn: document.getElementById("bigwords-repeat-btn"),
+    bigwordsNextBtn: document.getElementById("bigwords-next-btn"),
+    bigwordsSoundToggle: document.getElementById("bigwords-sound-toggle"),
     measureSetupScreen: document.getElementById("measure-setup-screen"),
     measurePlayScreen: document.getElementById("measure-play-screen"),
     measureModeMixed: document.getElementById("measure-mode-mixed"),
@@ -291,10 +315,12 @@
   var STORAGE = {
     mathPrefs: "kidsAppV1MathPrefs",
     spellingPrefs: "kidsAppV1SpellingPrefs",
-    measurePrefs: "kidsAppV1MeasurePrefs"
+    measurePrefs: "kidsAppV1MeasurePrefs",
+    bigwordsPrefs: "kidsAppV1BigwordsPrefs"
   };
   var LEGACY_BEST_KEY = "kidsMathV3BestScore";
   var MEASURE_TOTAL = 10;
+  var BIGWORDS_TOTAL = 10;
   var SPELLING_TOTAL = 10;
   var SPELLING_DECOYS = 2;
   var ARROW_COLOR_IDS = ["red", "green", "blue", "yellow", "black"];
@@ -343,185 +369,19 @@
       label: "Size & measure",
       setupRoute: "measureSetup",
       playRoute: "measurePlay"
+    },
+    bigwords: {
+      id: "bigwords",
+      label: "Big words \u2192 small words",
+      setupRoute: "bigwordsSetup",
+      playRoute: "bigwordsPlay",
+      onLeave(state2) {
+        state2.bigwordsListenGen += 1;
+        state2.bigwordsListenPlaying = false;
+      }
     }
   };
-  var PLAY_ROUTES = /* @__PURE__ */ new Set(["play", "phonicsPlay", "spellingPlay", "arrowPlay", "measurePlay"]);
-
-  // src/router.js
-  var NAV_TITLE = {
-    home: "Kids Learning Playground",
-    mathSetup: "Numbers \u2014 Set up",
-    spellingSetup: "Spelling \u2014 Set up",
-    play: "Numbers \u2014 Practice",
-    phonicsPlay: "Letter sounds",
-    spellingPlay: "Spelling \u2014 Practice",
-    arrowPlay: "Arrow words \u2014 Practice",
-    measureSetup: "Size & measure \u2014 Set up",
-    measurePlay: "Size & measure \u2014 Practice",
-    end: "Round finished!"
-  };
-  var currentRoute = "home";
-  function getCurrentRoute() {
-    return currentRoute;
-  }
-  function updateAppNav(screenName) {
-    if (els.appNavTitle) {
-      els.appNavTitle.textContent = NAV_TITLE[screenName] || NAV_TITLE.home;
-    }
-    if (els.appNavHome) {
-      const onDashboard = screenName === "home";
-      els.appNavHome.disabled = onDashboard;
-      els.appNavHome.setAttribute("aria-hidden", onDashboard ? "true" : "false");
-    }
-  }
-  function openAppModal(opts) {
-    if (!els.appModal || !els.appModalTitle || !els.appModalMessage || !els.appModalCancel || !els.appModalConfirm) {
-      return Promise.resolve(window.confirm(opts.message || opts.title));
-    }
-    return new Promise((resolve) => {
-      const prevOverflow = document.body.style.overflow;
-      const prevFocus = document.activeElement;
-      els.appModalTitle.textContent = opts.title;
-      els.appModalMessage.textContent = opts.message;
-      els.appModalConfirm.textContent = opts.confirmLabel || "OK";
-      els.appModalCancel.textContent = opts.cancelLabel || "Cancel";
-      const focusables = [els.appModalCancel, els.appModalConfirm];
-      function cleanup() {
-        els.appModalConfirm.onclick = null;
-        els.appModalCancel.onclick = null;
-        if (els.appModalBackdrop) els.appModalBackdrop.onclick = null;
-        document.body.style.overflow = prevOverflow;
-        document.removeEventListener("keydown", onKey, true);
-        els.appModal.classList.remove("is-open");
-        els.appModal.setAttribute("aria-hidden", "true");
-        if (prevFocus && typeof prevFocus.focus === "function") {
-          try {
-            prevFocus.focus();
-          } catch (e) {
-          }
-        }
-      }
-      function finish(value) {
-        cleanup();
-        resolve(value);
-      }
-      function onKey(e) {
-        if (e.key === "Escape") {
-          e.preventDefault();
-          finish(false);
-          return;
-        }
-        if (e.key !== "Tab") return;
-        const i = focusables.indexOf(document.activeElement);
-        if (e.shiftKey) {
-          if (i <= 0) {
-            e.preventDefault();
-            focusables[focusables.length - 1].focus();
-          }
-        } else if (i === focusables.length - 1 || i === -1) {
-          e.preventDefault();
-          focusables[0].focus();
-        }
-      }
-      document.body.style.overflow = "hidden";
-      els.appModal.classList.add("is-open");
-      els.appModal.setAttribute("aria-hidden", "false");
-      document.addEventListener("keydown", onKey, true);
-      els.appModalConfirm.onclick = () => finish(true);
-      els.appModalCancel.onclick = () => finish(false);
-      if (els.appModalBackdrop) els.appModalBackdrop.onclick = () => finish(false);
-      requestAnimationFrame(() => {
-        els.appModalCancel.focus();
-      });
-    });
-  }
-  function requestGoHome() {
-    if (PLAY_ROUTES.has(currentRoute)) {
-      openAppModal({
-        title: "Go home?",
-        message: "This round will stop. You can start a new one anytime!",
-        confirmLabel: "Go home \u{1F3E0}",
-        cancelLabel: "Keep playing"
-      }).then((ok) => {
-        if (!ok) return;
-        pickRandomBg();
-        showScreen("home");
-      });
-      return;
-    }
-    pickRandomBg();
-    showScreen("home");
-  }
-  function showScreen(name) {
-    var _a, _b;
-    if (currentRoute === ACTIVITIES.spellingPhonics.playRoute && name !== ACTIVITIES.spellingPhonics.playRoute) {
-      (_b = (_a = ACTIVITIES.spellingPhonics).onLeave) == null ? void 0 : _b.call(_a, state);
-    }
-    const screens = {
-      home: els.homeScreen,
-      mathSetup: els.mathSetupScreen,
-      spellingSetup: els.spellingSetupScreen,
-      spellingPlay: els.spellingPlayScreen,
-      phonicsPlay: els.phonicsPlayScreen,
-      arrowPlay: els.arrowPlayScreen,
-      measureSetup: els.measureSetupScreen,
-      measurePlay: els.measurePlayScreen,
-      play: els.mainScreen,
-      end: els.endScreen
-    };
-    Object.values(screens).forEach((el) => {
-      if (el) el.style.display = "none";
-    });
-    if (name === "home") {
-      screens.home.style.display = "flex";
-    } else if (name === "mathSetup") {
-      screens.mathSetup.style.display = "flex";
-    } else if (name === "spellingSetup") {
-      screens.spellingSetup.style.display = "flex";
-    } else if (name === "spellingPlay") {
-      screens.spellingPlay.style.display = "flex";
-    } else if (name === "phonicsPlay") {
-      if (screens.phonicsPlay) screens.phonicsPlay.style.display = "flex";
-    } else if (name === "arrowPlay") {
-      if (screens.arrowPlay) screens.arrowPlay.style.display = "flex";
-    } else if (name === "measureSetup") {
-      if (screens.measureSetup) screens.measureSetup.style.display = "flex";
-    } else if (name === "measurePlay") {
-      if (screens.measurePlay) screens.measurePlay.style.display = "flex";
-    } else if (name === "play") {
-      screens.play.style.display = "flex";
-    } else if (name === "end") {
-      screens.end.style.display = "flex";
-    }
-    currentRoute = name;
-    updateAppNav(name);
-  }
-
-  // src/ui/toggles.js
-  function updateSoundToggle() {
-    const on = state.soundOn ? "Sound: On" : "Sound: Off";
-    const pressed = state.soundOn ? "true" : "false";
-    if (els.soundToggle) {
-      els.soundToggle.textContent = on;
-      els.soundToggle.setAttribute("aria-pressed", pressed);
-    }
-    if (els.spellingSoundToggle) {
-      els.spellingSoundToggle.textContent = on;
-      els.spellingSoundToggle.setAttribute("aria-pressed", pressed);
-    }
-    if (els.phonicsSoundToggle) {
-      els.phonicsSoundToggle.textContent = on;
-      els.phonicsSoundToggle.setAttribute("aria-pressed", pressed);
-    }
-    if (els.arrowSoundToggle) {
-      els.arrowSoundToggle.textContent = on;
-      els.arrowSoundToggle.setAttribute("aria-pressed", pressed);
-    }
-  }
-  function updateHintToggle() {
-    els.hintToggle.textContent = state.hintOn ? "Hint: On" : "Hint: Off";
-    els.hintToggle.setAttribute("aria-pressed", state.hintOn ? "true" : "false");
-  }
+  var PLAY_ROUTES = /* @__PURE__ */ new Set(["play", "phonicsPlay", "spellingPlay", "arrowPlay", "measurePlay", "bigwordsPlay"]);
 
   // src/audio/index.js
   var audioCtx = null;
@@ -762,6 +622,248 @@
   var playToggleSound2 = () => playSound("toggle", () => playTone(360, 70));
   var playAddEmojiSound = () => playSound("addEmoji", () => playTone(430, 85));
   var playSubmitSound = () => playSound("submit", () => playTone(300, 55));
+  function cancelSpeech() {
+    try {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+    } catch (e) {
+    }
+  }
+  function speakTextAndWait(text, opts = {}) {
+    return new Promise((resolve) => {
+      var _a, _b;
+      let done = false;
+      let safetyTimer = 0;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        if (safetyTimer) clearTimeout(safetyTimer);
+        resolve();
+      };
+      if (!state.soundOn || !text) {
+        finish();
+        return;
+      }
+      const synth = window.speechSynthesis;
+      if (!synth || typeof SpeechSynthesisUtterance === "undefined") {
+        finish();
+        return;
+      }
+      const utter = new SpeechSynthesisUtterance(String(text));
+      utter.lang = opts.lang || "en-US";
+      utter.rate = (_a = opts.rate) != null ? _a : 0.85;
+      utter.pitch = (_b = opts.pitch) != null ? _b : 1;
+      utter.onend = finish;
+      utter.onerror = finish;
+      safetyTimer = setTimeout(finish, Math.max(2500, String(text).length * 400));
+      synth.cancel();
+      synth.speak(utter);
+    });
+  }
+  function updateBigwordsHearButtons() {
+    const busy = state.bigwordsListenPlaying;
+    const off = !state.soundOn;
+    if (els.bigwordsRepeatBtn) {
+      els.bigwordsRepeatBtn.disabled = busy || off;
+      els.bigwordsRepeatBtn.setAttribute("aria-disabled", busy || off ? "true" : "false");
+    }
+    if (els.bigwordsNextBtn) {
+      els.bigwordsNextBtn.disabled = busy;
+      els.bigwordsNextBtn.setAttribute("aria-disabled", busy ? "true" : "false");
+    }
+    if (els.bigwordsChunks) {
+      els.bigwordsChunks.querySelectorAll(".bigwords-chunk").forEach((btn) => {
+        btn.disabled = busy || off;
+      });
+    }
+  }
+
+  // src/router.js
+  var NAV_TITLE = {
+    home: "Kids Learning Playground",
+    mathSetup: "Numbers \u2014 Set up",
+    spellingSetup: "Spelling \u2014 Set up",
+    play: "Numbers \u2014 Practice",
+    phonicsPlay: "Letter sounds",
+    spellingPlay: "Spelling \u2014 Practice",
+    arrowPlay: "Arrow words \u2014 Practice",
+    measureSetup: "Size & measure \u2014 Set up",
+    measurePlay: "Size & measure \u2014 Practice",
+    bigwordsSetup: "Big words \u2014 Set up",
+    bigwordsPlay: "Big words \u2014 Practice",
+    end: "Round finished!"
+  };
+  var currentRoute = "home";
+  function getCurrentRoute() {
+    return currentRoute;
+  }
+  function updateAppNav(screenName) {
+    if (els.appNavTitle) {
+      els.appNavTitle.textContent = NAV_TITLE[screenName] || NAV_TITLE.home;
+    }
+    if (els.appNavHome) {
+      const onDashboard = screenName === "home";
+      els.appNavHome.disabled = onDashboard;
+      els.appNavHome.setAttribute("aria-hidden", onDashboard ? "true" : "false");
+    }
+  }
+  function openAppModal(opts) {
+    if (!els.appModal || !els.appModalTitle || !els.appModalMessage || !els.appModalCancel || !els.appModalConfirm) {
+      return Promise.resolve(window.confirm(opts.message || opts.title));
+    }
+    return new Promise((resolve) => {
+      const prevOverflow = document.body.style.overflow;
+      const prevFocus = document.activeElement;
+      els.appModalTitle.textContent = opts.title;
+      els.appModalMessage.textContent = opts.message;
+      els.appModalConfirm.textContent = opts.confirmLabel || "OK";
+      els.appModalCancel.textContent = opts.cancelLabel || "Cancel";
+      const focusables = [els.appModalCancel, els.appModalConfirm];
+      function cleanup() {
+        els.appModalConfirm.onclick = null;
+        els.appModalCancel.onclick = null;
+        if (els.appModalBackdrop) els.appModalBackdrop.onclick = null;
+        document.body.style.overflow = prevOverflow;
+        document.removeEventListener("keydown", onKey, true);
+        els.appModal.classList.remove("is-open");
+        els.appModal.setAttribute("aria-hidden", "true");
+        if (prevFocus && typeof prevFocus.focus === "function") {
+          try {
+            prevFocus.focus();
+          } catch (e) {
+          }
+        }
+      }
+      function finish(value) {
+        cleanup();
+        resolve(value);
+      }
+      function onKey(e) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          finish(false);
+          return;
+        }
+        if (e.key !== "Tab") return;
+        const i = focusables.indexOf(document.activeElement);
+        if (e.shiftKey) {
+          if (i <= 0) {
+            e.preventDefault();
+            focusables[focusables.length - 1].focus();
+          }
+        } else if (i === focusables.length - 1 || i === -1) {
+          e.preventDefault();
+          focusables[0].focus();
+        }
+      }
+      document.body.style.overflow = "hidden";
+      els.appModal.classList.add("is-open");
+      els.appModal.setAttribute("aria-hidden", "false");
+      document.addEventListener("keydown", onKey, true);
+      els.appModalConfirm.onclick = () => finish(true);
+      els.appModalCancel.onclick = () => finish(false);
+      if (els.appModalBackdrop) els.appModalBackdrop.onclick = () => finish(false);
+      requestAnimationFrame(() => {
+        els.appModalCancel.focus();
+      });
+    });
+  }
+  function requestGoHome() {
+    if (PLAY_ROUTES.has(currentRoute)) {
+      openAppModal({
+        title: "Go home?",
+        message: "This round will stop. You can start a new one anytime!",
+        confirmLabel: "Go home \u{1F3E0}",
+        cancelLabel: "Keep playing"
+      }).then((ok) => {
+        if (!ok) return;
+        pickRandomBg();
+        showScreen("home");
+      });
+      return;
+    }
+    pickRandomBg();
+    showScreen("home");
+  }
+  function showScreen(name) {
+    var _a, _b, _c, _d;
+    if (currentRoute === ACTIVITIES.spellingPhonics.playRoute && name !== ACTIVITIES.spellingPhonics.playRoute) {
+      (_b = (_a = ACTIVITIES.spellingPhonics).onLeave) == null ? void 0 : _b.call(_a, state);
+    }
+    if (currentRoute === ACTIVITIES.bigwords.playRoute && name !== ACTIVITIES.bigwords.playRoute) {
+      cancelSpeech();
+      (_d = (_c = ACTIVITIES.bigwords).onLeave) == null ? void 0 : _d.call(_c, state);
+    }
+    const screens = {
+      home: els.homeScreen,
+      mathSetup: els.mathSetupScreen,
+      spellingSetup: els.spellingSetupScreen,
+      spellingPlay: els.spellingPlayScreen,
+      phonicsPlay: els.phonicsPlayScreen,
+      arrowPlay: els.arrowPlayScreen,
+      measureSetup: els.measureSetupScreen,
+      measurePlay: els.measurePlayScreen,
+      bigwordsSetup: els.bigwordsSetupScreen,
+      bigwordsPlay: els.bigwordsPlayScreen,
+      play: els.mainScreen,
+      end: els.endScreen
+    };
+    Object.values(screens).forEach((el) => {
+      if (el) el.style.display = "none";
+    });
+    if (name === "home") {
+      screens.home.style.display = "flex";
+    } else if (name === "mathSetup") {
+      screens.mathSetup.style.display = "flex";
+    } else if (name === "spellingSetup") {
+      screens.spellingSetup.style.display = "flex";
+    } else if (name === "spellingPlay") {
+      screens.spellingPlay.style.display = "flex";
+    } else if (name === "phonicsPlay") {
+      if (screens.phonicsPlay) screens.phonicsPlay.style.display = "flex";
+    } else if (name === "arrowPlay") {
+      if (screens.arrowPlay) screens.arrowPlay.style.display = "flex";
+    } else if (name === "measureSetup") {
+      if (screens.measureSetup) screens.measureSetup.style.display = "flex";
+    } else if (name === "measurePlay") {
+      if (screens.measurePlay) screens.measurePlay.style.display = "flex";
+    } else if (name === "bigwordsSetup") {
+      if (screens.bigwordsSetup) screens.bigwordsSetup.style.display = "flex";
+    } else if (name === "bigwordsPlay") {
+      if (screens.bigwordsPlay) screens.bigwordsPlay.style.display = "flex";
+    } else if (name === "play") {
+      screens.play.style.display = "flex";
+    } else if (name === "end") {
+      screens.end.style.display = "flex";
+    }
+    currentRoute = name;
+    updateAppNav(name);
+  }
+
+  // src/ui/toggles.js
+  function updateSoundToggle() {
+    const on = state.soundOn ? "Sound: On" : "Sound: Off";
+    const pressed = state.soundOn ? "true" : "false";
+    if (els.soundToggle) {
+      els.soundToggle.textContent = on;
+      els.soundToggle.setAttribute("aria-pressed", pressed);
+    }
+    if (els.spellingSoundToggle) {
+      els.spellingSoundToggle.textContent = on;
+      els.spellingSoundToggle.setAttribute("aria-pressed", pressed);
+    }
+    if (els.phonicsSoundToggle) {
+      els.phonicsSoundToggle.textContent = on;
+      els.phonicsSoundToggle.setAttribute("aria-pressed", pressed);
+    }
+    if (els.arrowSoundToggle) {
+      els.arrowSoundToggle.textContent = on;
+      els.arrowSoundToggle.setAttribute("aria-pressed", pressed);
+    }
+  }
+  function updateHintToggle() {
+    els.hintToggle.textContent = state.hintOn ? "Hint: On" : "Hint: Off";
+    els.hintToggle.setAttribute("aria-pressed", state.hintOn ? "true" : "false");
+  }
 
   // src/storage/math.js
   function bestScoreStorageKey() {
@@ -883,6 +985,28 @@
   function saveMeasurePrefs() {
     try {
       localStorage.setItem(STORAGE.measurePrefs, JSON.stringify({ mode: state.measureMode }));
+    } catch (e) {
+    }
+  }
+
+  // src/storage/bigwords.js
+  function loadBigwordsPrefs() {
+    try {
+      const raw = localStorage.getItem(STORAGE.bigwordsPrefs);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (["easy", "medium", "hard"].includes(data.difficulty)) {
+        state.bigwordsDifficulty = data.difficulty;
+      }
+    } catch (e) {
+    }
+  }
+  function saveBigwordsPrefs() {
+    try {
+      localStorage.setItem(
+        STORAGE.bigwordsPrefs,
+        JSON.stringify({ difficulty: state.bigwordsDifficulty })
+      );
     } catch (e) {
     }
   }
@@ -1304,6 +1428,232 @@
     if (!prefersReducedMotion) launchConfetti(60);
     if (state.measureScore === total) playSound("endPerfect", playCelebrationSound);
     else playSound("endTryAgain", playWrongSound);
+  }
+
+  // src/bigwords/setup.js
+  function syncBigwordsSetupUI() {
+    const diffMap = {
+      easy: els.bigwordsDiffEasy,
+      medium: els.bigwordsDiffMedium,
+      hard: els.bigwordsDiffHard
+    };
+    Object.values(diffMap).forEach((btn) => {
+      if (btn) btn.setAttribute("aria-pressed", "false");
+    });
+    if (diffMap[state.bigwordsDifficulty]) {
+      diffMap[state.bigwordsDifficulty].setAttribute("aria-pressed", "true");
+    }
+    if (els.bigwordsSetupHint) {
+      const hints = {
+        easy: "3\u20134 syllable words. Tap each chunk to hear it, then say it aloud!",
+        medium: "5\u20137 syllable words. Break the big word into small sound chunks.",
+        hard: "8\u201310 syllable words. Take your time \u2014 adult taps Next when ready."
+      };
+      els.bigwordsSetupHint.textContent = hints[state.bigwordsDifficulty] || hints.medium;
+    }
+  }
+  function setBigwordsDifficulty(diff) {
+    state.bigwordsDifficulty = diff;
+    syncBigwordsSetupUI();
+    playSelectSound();
+  }
+
+  // src/content/big-words.js
+  var BIG_WORDS = [
+    // Easy — 3 syllables
+    { word: "banana", chunks: ["ba", "na", "na"] },
+    { word: "tomato", chunks: ["to", "ma", "to"] },
+    { word: "animal", chunks: ["an", "i", "mal"] },
+    { word: "family", chunks: ["fam", "i", "ly"] },
+    { word: "bicycle", chunks: ["bi", "cy", "cle"] },
+    { word: "dinosaur", chunks: ["di", "no", "saur"] },
+    { word: "umbrella", chunks: ["um", "brel", "la"] },
+    { word: "elephant", chunks: ["el", "e", "phant"] },
+    { word: "hospital", chunks: ["hos", "pi", "tal"] },
+    { word: "pineapple", chunks: ["pine", "ap", "ple"] },
+    { word: "chocolate", chunks: ["choc", "o", "late"] },
+    { word: "kangaroo", chunks: ["kan", "ga", "roo"] },
+    // Easy — 4 syllables
+    { word: "butterfly", chunks: ["but", "ter", "fly"] },
+    { word: "watermelon", chunks: ["wa", "ter", "mel", "on"] },
+    { word: "celebration", chunks: ["cel", "e", "bra", "tion"] },
+    { word: "adventure", chunks: ["ad", "ven", "ture"] },
+    { word: "telephone", chunks: ["tel", "e", "phone"] },
+    { word: "vegetable", chunks: ["veg", "e", "ta", "ble"] },
+    { word: "helicopter", chunks: ["hel", "i", "cop", "ter"] },
+    { word: "caterpillar", chunks: ["cat", "er", "pil", "lar"] },
+    { word: "refrigerator", chunks: ["re", "frig", "er", "a", "tor"] },
+    // Medium — 5 syllables
+    { word: "imagination", chunks: ["im", "ag", "i", "na", "tion"] },
+    { word: "opportunity", chunks: ["op", "por", "tu", "ni", "ty"] },
+    { word: "multiplication", chunks: ["mul", "ti", "pli", "ca", "tion"] },
+    { word: "accidentally", chunks: ["ac", "ci", "den", "tal", "ly"] },
+    { word: "electricity", chunks: ["e", "lec", "tric", "i", "ty"] },
+    { word: "pronunciation", chunks: ["pro", "nun", "ci", "a", "tion"] },
+    { word: "encyclopedia", chunks: ["en", "cy", "clo", "pe", "di", "a"] },
+    { word: "responsibility", chunks: ["re", "spon", "si", "bil", "i", "ty"] },
+    // Medium — 6–7 syllables
+    { word: "extraordinary", chunks: ["ex", "tra", "or", "di", "na", "ry"] },
+    { word: "communication", chunks: ["com", "mu", "ni", "ca", "tion"] },
+    { word: "environmental", chunks: ["en", "vi", "ron", "men", "tal"] },
+    { word: "characteristic", chunks: ["char", "ac", "ter", "is", "tic"] },
+    { word: "revolutionary", chunks: ["rev", "o", "lu", "tion", "ar", "y"] },
+    { word: "individuality", chunks: ["in", "di", "vid", "u", "al", "i", "ty"] },
+    { word: "international", chunks: ["in", "ter", "na", "tion", "al"] },
+    // Hard — 8 syllables
+    { word: "incomprehensibility", chunks: ["in", "com", "pre", "hen", "si", "bil", "i", "ty"] },
+    { word: "internationalization", chunks: ["in", "ter", "na", "tion", "al", "i", "za", "tion"] },
+    { word: "uncharacteristically", chunks: ["un", "char", "ac", "ter", "is", "ti", "cal", "ly"] },
+    { word: "individualization", chunks: ["in", "di", "vid", "u", "al", "i", "za", "tion"] },
+    { word: "institutionalization", chunks: ["in", "sti", "tu", "tion", "al", "i", "za", "tion"] },
+    { word: "operationalization", chunks: ["op", "er", "a", "tion", "al", "i", "za", "tion"] },
+    { word: "unintelligibility", chunks: ["un", "in", "tel", "lig", "i", "bil", "i", "ty"] },
+    // Hard — 9–10 syllables
+    { word: "overcommercialization", chunks: ["o", "ver", "com", "mer", "cial", "i", "za", "tion"] },
+    { word: "interdisciplinary", chunks: ["in", "ter", "dis", "ci", "pli", "nar", "y"] },
+    { word: "misinterpretation", chunks: ["mis", "in", "ter", "pre", "ta", "tion"] },
+    { word: "electrification", chunks: ["e", "lec", "tri", "fi", "ca", "tion"] },
+    { word: "personalization", chunks: ["per", "son", "al", "i", "za", "tion"] },
+    { word: "deindustrialization", chunks: ["de", "in", "dus", "tri", "al", "i", "za", "tion"] }
+  ];
+  var DIFF_RANGES = {
+    easy: { min: 3, max: 4 },
+    medium: { min: 5, max: 7 },
+    hard: { min: 8, max: 10 }
+  };
+  function wordsForDifficulty(difficulty) {
+    const range = DIFF_RANGES[difficulty] || DIFF_RANGES.medium;
+    return BIG_WORDS.filter((entry) => {
+      const count = entry.chunks.length;
+      return count >= range.min && count <= range.max;
+    });
+  }
+
+  // src/bigwords/play.js
+  function pickBigwordsRound() {
+    const pool = wordsForDifficulty(state.bigwordsDifficulty);
+    const picked = shuffle([...pool]).slice(0, BIGWORDS_TOTAL);
+    while (picked.length < BIGWORDS_TOTAL && pool.length) {
+      picked.push(pool[picked.length % pool.length]);
+    }
+    return picked.slice(0, BIGWORDS_TOTAL);
+  }
+  function startBigwordsRound() {
+    state.activeGame = "bigwords";
+    saveBigwordsPrefs();
+    pickRandomBg();
+    state.bigwordsEntries = pickBigwordsRound();
+    state.bigwordsQIndex = 0;
+    state.bigwordsListenGen += 1;
+    state.bigwordsListenPlaying = false;
+    showScreen("bigwordsPlay");
+    loadBigword();
+  }
+  function loadBigword() {
+    cancelSpeech();
+    state.bigwordsListenPlaying = false;
+    state.bigwordsActiveChunk = null;
+    const entry = state.bigwordsEntries[state.bigwordsQIndex];
+    state.bigwordsCurrent = entry;
+    els.bigwordsQLabel.textContent = `Word ${state.bigwordsQIndex + 1} of ${BIGWORDS_TOTAL}`;
+    els.bigwordsProgressFill.style.width = `${(state.bigwordsQIndex + 1) / BIGWORDS_TOTAL * 100}%`;
+    els.bigwordsWord.textContent = entry.word.toUpperCase();
+    els.bigwordsWord.setAttribute("aria-label", `Big word: ${entry.word}`);
+    renderBigwordChunks(entry);
+    updateBigwordsHearButtons();
+  }
+  function renderBigwordChunks(entry) {
+    if (!els.bigwordsChunks) return;
+    els.bigwordsChunks.innerHTML = "";
+    entry.chunks.forEach((chunk, index) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "bigwords-chunk";
+      btn.textContent = chunk;
+      btn.setAttribute("aria-label", `Hear chunk ${chunk}`);
+      btn.onclick = () => onBigwordChunkTap(index);
+      els.bigwordsChunks.appendChild(btn);
+    });
+  }
+  function setActiveChunk(index) {
+    state.bigwordsActiveChunk = index;
+    if (!els.bigwordsChunks) return;
+    els.bigwordsChunks.querySelectorAll(".bigwords-chunk").forEach((btn, i) => {
+      btn.classList.toggle("bigwords-chunk--active", i === index);
+      btn.setAttribute("aria-pressed", i === index ? "true" : "false");
+    });
+  }
+  async function onBigwordChunkTap(index) {
+    if (state.bigwordsListenPlaying) return;
+    const entry = state.bigwordsCurrent;
+    if (!entry || !entry.chunks[index]) return;
+    playSelectSound();
+    setActiveChunk(index);
+    const genAtStart = state.bigwordsListenGen;
+    state.bigwordsListenPlaying = true;
+    updateBigwordsHearButtons();
+    try {
+      await speakTextAndWait(entry.chunks[index], { rate: 0.85 });
+      if (state.bigwordsListenGen !== genAtStart) return;
+    } finally {
+      state.bigwordsListenPlaying = false;
+      updateBigwordsHearButtons();
+    }
+  }
+  async function repeatBigword() {
+    if (state.bigwordsListenPlaying || !state.bigwordsCurrent) return;
+    const genAtStart = state.bigwordsListenGen;
+    state.bigwordsListenPlaying = true;
+    setActiveChunk(null);
+    updateBigwordsHearButtons();
+    try {
+      await speakTextAndWait(state.bigwordsCurrent.word, { rate: 0.8 });
+      if (state.bigwordsListenGen !== genAtStart) return;
+    } finally {
+      state.bigwordsListenPlaying = false;
+      updateBigwordsHearButtons();
+    }
+  }
+  function nextBigword() {
+    if (state.bigwordsListenPlaying) return;
+    cancelSpeech();
+    state.bigwordsListenGen += 1;
+    state.bigwordsQIndex++;
+    if (state.bigwordsQIndex >= BIGWORDS_TOTAL) {
+      showBigwordsEnd();
+      return;
+    }
+    loadBigword();
+  }
+  var DIFF_LABELS = {
+    easy: "Easy",
+    medium: "Medium",
+    hard: "Hard"
+  };
+  function showBigwordsEnd() {
+    showScreen("end");
+    const diffLabel = DIFF_LABELS[state.bigwordsDifficulty] || "Medium";
+    els.endScreen.innerHTML = `
+    <div class="end-trophy">\u{1F3A4}</div>
+    <div class="end-title">Great speaking practice!</div>
+    <div class="end-score">You did ${BIGWORDS_TOTAL} words</div>
+    <div class="stats">Big words \u2192 small words \xB7 ${diffLabel} \xB7 Adult guided (no score)</div>
+    <div class="end-actions">
+      <button class="play-again-btn" id="play-again-btn" type="button">Play again \u{1F3AE}</button>
+      <button class="secondary-btn" id="change-bigwords-btn" type="button">Change level \u2699\uFE0F</button>
+      <button class="secondary-btn" id="home-btn" type="button">Home \u{1F3E0}</button>
+    </div>
+  `;
+    document.getElementById("play-again-btn").onclick = () => startBigwordsRound();
+    document.getElementById("change-bigwords-btn").onclick = () => {
+      pickRandomBg();
+      showScreen("bigwordsSetup");
+      syncBigwordsSetupUI();
+    };
+    document.getElementById("home-btn").onclick = () => {
+      state.activeGame = "math";
+      requestGoHome();
+    };
   }
 
   // src/math/setup.js
@@ -2870,6 +3220,41 @@
         showScreen("measureSetup");
       });
     }
+    if (els.pickBigwords) {
+      els.pickBigwords.addEventListener("click", () => {
+        playSelectSound();
+        pickRandomBg();
+        loadBigwordsPrefs();
+        syncBigwordsSetupUI();
+        showScreen("bigwordsSetup");
+      });
+    }
+    if (els.bigwordsBackBtn) {
+      els.bigwordsBackBtn.addEventListener("click", () => {
+        playToggleSound2();
+        requestGoHome();
+      });
+    }
+    if (els.bigwordsStartBtn) {
+      els.bigwordsStartBtn.addEventListener("click", () => {
+        playSubmitSound();
+        startBigwordsRound();
+      });
+    }
+    if (els.bigwordsDiffEasy) els.bigwordsDiffEasy.addEventListener("click", () => setBigwordsDifficulty("easy"));
+    if (els.bigwordsDiffMedium) els.bigwordsDiffMedium.addEventListener("click", () => setBigwordsDifficulty("medium"));
+    if (els.bigwordsDiffHard) els.bigwordsDiffHard.addEventListener("click", () => setBigwordsDifficulty("hard"));
+    if (els.bigwordsRepeatBtn) {
+      els.bigwordsRepeatBtn.addEventListener("click", () => {
+        repeatBigword();
+      });
+    }
+    if (els.bigwordsNextBtn) {
+      els.bigwordsNextBtn.addEventListener("click", () => {
+        playSubmitSound();
+        nextBigword();
+      });
+    }
     if (els.measureBackBtn) {
       els.measureBackBtn.addEventListener("click", () => {
         playToggleSound2();
@@ -2947,6 +3332,7 @@
       updateSpellingHearButton();
       updateArrowHearButton();
       updatePhonicsPlayAzButton();
+      updateBigwordsHearButtons();
       if (state.soundOn) playToggleSound2();
     }
     els.soundToggle.addEventListener("click", onSoundToggleClick);
@@ -2954,6 +3340,7 @@
     if (els.phonicsSoundToggle) els.phonicsSoundToggle.addEventListener("click", onSoundToggleClick);
     if (els.arrowSoundToggle) els.arrowSoundToggle.addEventListener("click", onSoundToggleClick);
     if (els.measureSoundToggle) els.measureSoundToggle.addEventListener("click", onSoundToggleClick);
+    if (els.bigwordsSoundToggle) els.bigwordsSoundToggle.addEventListener("click", onSoundToggleClick);
     if (els.phonicsPlayAzBtn) {
       els.phonicsPlayAzBtn.addEventListener("click", () => {
         playPhonicsAlphabet();
@@ -2980,6 +3367,22 @@
       }
     });
     document.addEventListener("keydown", (e) => {
+      var _a;
+      if (isTypingTarget(e.target)) return;
+      if (state.activeGame === "bigwords" && ((_a = els.bigwordsPlayScreen) == null ? void 0 : _a.style.display) !== "none") {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          playSubmitSound();
+          nextBigword();
+          return;
+        }
+        if (e.key === "r" || e.key === "R") {
+          e.preventDefault();
+          repeatBigword();
+          return;
+        }
+        return;
+      }
       if (state.activeGame !== "math") return;
       if (els.mainScreen.style.display === "none") return;
       if (isTypingTarget(e.target)) return;
@@ -3020,14 +3423,17 @@
     loadMathPrefs();
     loadSpellingPrefs();
     loadMeasurePrefs();
+    loadBigwordsPrefs();
     syncMathSetupUI();
     syncSpellingSetupUI();
     syncMeasureSetupUI();
+    syncBigwordsSetupUI();
     updateSoundToggle();
     updateHintToggle();
     updateSpellingHearButton();
     updateArrowHearButton();
     updatePhonicsPlayAzButton();
+    updateBigwordsHearButtons();
     state.activeGame = "math";
     pickRandomBg();
     showScreen("home");

@@ -127,11 +127,14 @@ export const STORAGE = {
   mathPrefs: 'kidsAppV1MathPrefs',
   spellingPrefs: 'kidsAppV1SpellingPrefs',
   measurePrefs: 'kidsAppV1MeasurePrefs',
+  bigwordsPrefs: 'kidsAppV1BigwordsPrefs',
 };
 export const LEGACY_BEST_KEY = 'kidsMathV3BestScore';
 
 /** Same round length as math (totalQuestions) and spelling. */
 export const MEASURE_TOTAL = 10;
+
+export const BIGWORDS_TOTAL = 10;
 
 export const SPELLING_TOTAL = 10;
 export const SPELLING_DECOYS = 2;

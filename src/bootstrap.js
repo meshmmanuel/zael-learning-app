@@ -13,12 +13,16 @@ import {
   playSubmitSound,
   playSpellWordLetterByLetter,
   updateSpellingHearButton,
+  updateBigwordsHearButtons,
 } from './audio/index.js';
 import { loadMathPrefs } from './storage/math.js';
 import { loadSpellingPrefs } from './storage/spelling.js';
 import { loadMeasurePrefs } from './storage/measurement.js';
+import { loadBigwordsPrefs } from './storage/bigwords.js';
 import { syncMeasureSetupUI, setMeasureMode } from './measurement/setup.js';
 import { startMeasureRound } from './measurement/play.js';
+import { syncBigwordsSetupUI, setBigwordsDifficulty } from './bigwords/setup.js';
+import { startBigwordsRound, nextBigword, repeatBigword } from './bigwords/play.js';
 import { syncMathSetupUI, setMathMode, setMathDifficulty } from './math/setup.js';
 import {
   startMathRound,
@@ -68,6 +72,47 @@ export function wireApp() {
       loadMeasurePrefs();
       syncMeasureSetupUI();
       showScreen('measureSetup');
+    });
+  }
+
+  if (els.pickBigwords) {
+    els.pickBigwords.addEventListener('click', () => {
+      playSelectSound();
+      pickRandomBg();
+      loadBigwordsPrefs();
+      syncBigwordsSetupUI();
+      showScreen('bigwordsSetup');
+    });
+  }
+
+  if (els.bigwordsBackBtn) {
+    els.bigwordsBackBtn.addEventListener('click', () => {
+      playToggleSound();
+      requestGoHome();
+    });
+  }
+
+  if (els.bigwordsStartBtn) {
+    els.bigwordsStartBtn.addEventListener('click', () => {
+      playSubmitSound();
+      startBigwordsRound();
+    });
+  }
+
+  if (els.bigwordsDiffEasy) els.bigwordsDiffEasy.addEventListener('click', () => setBigwordsDifficulty('easy'));
+  if (els.bigwordsDiffMedium) els.bigwordsDiffMedium.addEventListener('click', () => setBigwordsDifficulty('medium'));
+  if (els.bigwordsDiffHard) els.bigwordsDiffHard.addEventListener('click', () => setBigwordsDifficulty('hard'));
+
+  if (els.bigwordsRepeatBtn) {
+    els.bigwordsRepeatBtn.addEventListener('click', () => {
+      repeatBigword();
+    });
+  }
+
+  if (els.bigwordsNextBtn) {
+    els.bigwordsNextBtn.addEventListener('click', () => {
+      playSubmitSound();
+      nextBigword();
     });
   }
 
@@ -162,6 +207,7 @@ export function wireApp() {
     updateSpellingHearButton();
     updateArrowHearButton();
     updatePhonicsPlayAzButton();
+    updateBigwordsHearButtons();
     if (state.soundOn) playToggleSound();
   }
 
@@ -170,6 +216,7 @@ export function wireApp() {
   if (els.phonicsSoundToggle) els.phonicsSoundToggle.addEventListener('click', onSoundToggleClick);
   if (els.arrowSoundToggle) els.arrowSoundToggle.addEventListener('click', onSoundToggleClick);
   if (els.measureSoundToggle) els.measureSoundToggle.addEventListener('click', onSoundToggleClick);
+  if (els.bigwordsSoundToggle) els.bigwordsSoundToggle.addEventListener('click', onSoundToggleClick);
 
   if (els.phonicsPlayAzBtn) {
     els.phonicsPlayAzBtn.addEventListener('click', () => {
@@ -201,6 +248,23 @@ export function wireApp() {
   });
 
   document.addEventListener('keydown', (e) => {
+    if (isTypingTarget(e.target)) return;
+
+    if (state.activeGame === 'bigwords' && els.bigwordsPlayScreen?.style.display !== 'none') {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        playSubmitSound();
+        nextBigword();
+        return;
+      }
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        repeatBigword();
+        return;
+      }
+      return;
+    }
+
     if (state.activeGame !== 'math') return;
     if (els.mainScreen.style.display === 'none') return;
     if (isTypingTarget(e.target)) return;
@@ -243,14 +307,17 @@ export function initApp() {
   loadMathPrefs();
   loadSpellingPrefs();
   loadMeasurePrefs();
+  loadBigwordsPrefs();
   syncMathSetupUI();
   syncSpellingSetupUI();
   syncMeasureSetupUI();
+  syncBigwordsSetupUI();
   updateSoundToggle();
   updateHintToggle();
   updateSpellingHearButton();
   updateArrowHearButton();
   updatePhonicsPlayAzButton();
+  updateBigwordsHearButtons();
   state.activeGame = 'math';
   pickRandomBg();
   showScreen('home');

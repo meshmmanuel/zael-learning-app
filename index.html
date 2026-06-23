@@ -39,6 +39,10 @@
         <span class="subject-tile-icon" aria-hidden="true">⚖️</span>
         <span class="subject-tile-label">Size &amp; measure</span>
       </button>
+      <button type="button" class="subject-tile" id="pick-bigwords" aria-label="Big words to small words">
+        <span class="subject-tile-icon" aria-hidden="true">📖</span>
+        <span class="subject-tile-label">Big words</span>
+      </button>
     </div>
   </div>
 
@@ -131,6 +135,27 @@
     </div>
   </div>
 
+  <div id="bigwords-setup-screen" class="screen screen--setup bigwords-setup" style="display:none;">
+    <h2 class="screen-title">Big words → small words! 📖</h2>
+    <p class="screen-sub">Break long words into sound chunks and say them aloud.</p>
+
+    <fieldset class="setup-fieldset">
+      <legend class="setup-legend">How tricky should it be?</legend>
+      <div class="pick-row" role="group" aria-label="Difficulty">
+        <button type="button" class="pick-btn" id="bigwords-diff-easy" aria-pressed="false">Easy 🌱 (3–4)</button>
+        <button type="button" class="pick-btn" id="bigwords-diff-medium" aria-pressed="true">Medium ⭐ (5–7)</button>
+        <button type="button" class="pick-btn" id="bigwords-diff-hard" aria-pressed="false">Hard 🚀 (8–10)</button>
+      </div>
+    </fieldset>
+
+    <p class="screen-hint" id="bigwords-setup-hint">Tap each chunk to hear it. An adult listens and taps Next — no auto scoring.</p>
+
+    <div class="setup-actions">
+      <button type="button" class="secondary-btn" id="bigwords-back-btn">← Back</button>
+      <button type="button" class="primary-btn" id="bigwords-start-btn">Let’s speak! 🎤</button>
+    </div>
+  </div>
+
   <div id="measure-play-screen" class="screen screen--play measure-play" style="display:none;">
     <div class="play-panel">
       <div class="top-bar">
@@ -156,6 +181,31 @@
           </div>
         </div>
         <div class="feedback-msg" id="measure-feedback" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="bigwords-play-screen" class="screen screen--play bigwords-play" style="display:none;">
+    <div class="play-panel">
+      <div class="top-bar">
+        <div class="q-label" id="bigwords-q-label">Word 1 of 10</div>
+        <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="bigwords-progress-fill" style="width:10%"></div></div>
+      </div>
+      <div class="question-area bigwords-question-area">
+        <div class="toolbar toolbar--spelling-settings" aria-label="Sound settings">
+          <button type="button" id="bigwords-sound-toggle" class="sound-toggle sound-toggle--compact" aria-pressed="true">Sound: On</button>
+        </div>
+        <p class="bigwords-task-hint">Tap each chunk as you say it:</p>
+        <div class="bigwords-word-display" id="bigwords-word" aria-live="polite">EXTRAORDINARY</div>
+        <div class="bigwords-chunks" id="bigwords-chunks" role="group" aria-label="Word chunks"></div>
+        <p class="bigwords-adult-hint" id="bigwords-adult-hint">Adult: listen to the child, then tap Next.</p>
+        <div class="bigwords-actions">
+          <button type="button" class="spell-listen-btn" id="bigwords-repeat-btn">
+            <span class="spell-listen-icon" aria-hidden="true">🔊</span>
+            <span class="spell-listen-text">Repeat word</span>
+          </button>
+          <button class="submit-btn bigwords-next-btn" id="bigwords-next-btn" type="button">Next word →</button>
+        </div>
       </div>
     </div>
   </div>

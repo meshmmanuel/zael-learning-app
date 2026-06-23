@@ -268,3 +268,67 @@ export const playToggleSound = () => playSound('toggle', () => playTone(360, 70)
 export const playAddEmojiSound = () => playSound('addEmoji', () => playTone(430, 85));
 export const playSubmitSound = () => playSound('submit', () => playTone(300, 55));
 
+export function cancelSpeech() {
+  try {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Speaks text using the browser voice (for syllable chunks and full words).
+ * Safe no-op when sound is off or speechSynthesis is unavailable.
+ */
+export function speakTextAndWait(text, opts = {}) {
+  return new Promise((resolve) => {
+    let done = false;
+    let safetyTimer = 0;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      if (safetyTimer) clearTimeout(safetyTimer);
+      resolve();
+    };
+
+    if (!state.soundOn || !text) {
+      finish();
+      return;
+    }
+
+    const synth = window.speechSynthesis;
+    if (!synth || typeof SpeechSynthesisUtterance === 'undefined') {
+      finish();
+      return;
+    }
+
+    const utter = new SpeechSynthesisUtterance(String(text));
+    utter.lang = opts.lang || 'en-US';
+    utter.rate = opts.rate ?? 0.85;
+    utter.pitch = opts.pitch ?? 1;
+    utter.onend = finish;
+    utter.onerror = finish;
+    safetyTimer = setTimeout(finish, Math.max(2500, String(text).length * 400));
+    synth.cancel();
+    synth.speak(utter);
+  });
+}
+
+export function updateBigwordsHearButtons() {
+  const busy = state.bigwordsListenPlaying;
+  const off = !state.soundOn;
+  if (els.bigwordsRepeatBtn) {
+    els.bigwordsRepeatBtn.disabled = busy || off;
+    els.bigwordsRepeatBtn.setAttribute('aria-disabled', busy || off ? 'true' : 'false');
+  }
+  if (els.bigwordsNextBtn) {
+    els.bigwordsNextBtn.disabled = busy;
+    els.bigwordsNextBtn.setAttribute('aria-disabled', busy ? 'true' : 'false');
+  }
+  if (els.bigwordsChunks) {
+    els.bigwordsChunks.querySelectorAll('.bigwords-chunk').forEach((btn) => {
+      btn.disabled = busy || off;
+    });
+  }
+}
+

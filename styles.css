@@ -505,6 +505,98 @@ body * {
   margin: 0;
 }
 
+/* Big words → small words */
+.bigwords-word-display {
+  font-family: 'Fredoka One', cursive;
+  font-size: clamp(28px, 7vw, 42px);
+  text-align: center;
+  letter-spacing: 2px;
+  color: rgba(0, 0, 0, 0.78);
+  margin: 8px 0 16px;
+  word-break: break-word;
+}
+
+.bigwords-task-hint {
+  font-size: 15px;
+  font-weight: 800;
+  color: rgba(0, 0, 0, 0.56);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-align: center;
+  margin: 0 0 4px;
+}
+
+.bigwords-chunks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin: 12px 0 18px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.bigwords-chunk {
+  min-width: 56px;
+  min-height: 52px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  border: 3px solid transparent;
+  background: rgba(255, 255, 255, 0.9);
+  font-family: 'Fredoka One', cursive;
+  font-size: clamp(20px, 5vw, 28px);
+  color: #222;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s, background 0.12s, box-shadow 0.12s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.bigwords-chunk:hover:not(:disabled) {
+  transform: scale(1.05);
+  background: #fff;
+}
+
+.bigwords-chunk--active {
+  border-color: rgba(31, 111, 235, 0.7);
+  background: rgba(200, 230, 255, 0.85);
+  box-shadow: 0 4px 14px rgba(31, 111, 235, 0.2);
+}
+
+.bigwords-chunk:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.bigwords-adult-hint {
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.55);
+  text-align: center;
+  margin: 0 0 16px;
+  line-height: 1.4;
+}
+
+.bigwords-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.bigwords-next-btn {
+  width: auto;
+  min-width: min(100%, 220px);
+  flex: 1 1 180px;
+  max-width: 280px;
+}
+
 .spelling-slots-row {
   display: flex;
   flex-wrap: wrap;
@@ -934,6 +1026,7 @@ body * {
 .primary-btn:focus-visible,
 .secondary-btn:focus-visible,
 .spell-listen-btn:focus-visible,
+.bigwords-chunk:focus-visible,
 .measure-choice:focus-visible,
 .app-nav-home:focus-visible {
   outline: 4px solid #1f6feb;

@@ -2,6 +2,7 @@ import { state } from './state.js';
 import { els } from './dom.js';
 import { pickRandomBg } from './ui/chrome.js';
 import { ACTIVITIES, PLAY_ROUTES } from './activities/registry.js';
+import { cancelSpeech } from './audio/index.js';
 
 export const NAV_TITLE = {
   home: 'Kids Learning Playground',
@@ -13,6 +14,8 @@ export const NAV_TITLE = {
   arrowPlay: 'Arrow words — Practice',
   measureSetup: 'Size & measure — Set up',
   measurePlay: 'Size & measure — Practice',
+  bigwordsSetup: 'Big words — Set up',
+  bigwordsPlay: 'Big words — Practice',
   end: 'Round finished!',
 };
 
@@ -128,6 +131,10 @@ export function showScreen(name) {
   if (currentRoute === ACTIVITIES.spellingPhonics.playRoute && name !== ACTIVITIES.spellingPhonics.playRoute) {
     ACTIVITIES.spellingPhonics.onLeave?.(state);
   }
+  if (currentRoute === ACTIVITIES.bigwords.playRoute && name !== ACTIVITIES.bigwords.playRoute) {
+    cancelSpeech();
+    ACTIVITIES.bigwords.onLeave?.(state);
+  }
   const screens = {
     home: els.homeScreen,
     mathSetup: els.mathSetupScreen,
@@ -137,6 +144,8 @@ export function showScreen(name) {
     arrowPlay: els.arrowPlayScreen,
     measureSetup: els.measureSetupScreen,
     measurePlay: els.measurePlayScreen,
+    bigwordsSetup: els.bigwordsSetupScreen,
+    bigwordsPlay: els.bigwordsPlayScreen,
     play: els.mainScreen,
     end: els.endScreen,
   };
@@ -159,6 +168,10 @@ export function showScreen(name) {
     if (screens.measureSetup) screens.measureSetup.style.display = 'flex';
   } else if (name === 'measurePlay') {
     if (screens.measurePlay) screens.measurePlay.style.display = 'flex';
+  } else if (name === 'bigwordsSetup') {
+    if (screens.bigwordsSetup) screens.bigwordsSetup.style.display = 'flex';
+  } else if (name === 'bigwordsPlay') {
+    if (screens.bigwordsPlay) screens.bigwordsPlay.style.display = 'flex';
   } else if (name === 'play') {
     screens.play.style.display = 'flex';
   } else if (name === 'end') {
