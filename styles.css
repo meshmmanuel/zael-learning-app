@@ -9,6 +9,8 @@ html {
 
 body {
   touch-action: manipulation;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /*
@@ -17,6 +19,23 @@ body {
  */
 body * {
   touch-action: manipulation;
+}
+
+/* Tap / click only — no text select, drag, or long-press callouts (kids UI). */
+#app,
+#app * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app img,
+#app svg,
+#app button,
+#app a {
+  -webkit-user-drag: none;
+  user-drag: none;
 }
 
 /* Widen on tablets/desktop; phones stay ~one-column comfortable width. */

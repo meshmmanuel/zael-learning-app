@@ -47,7 +47,26 @@ import {
   scheduleArrowPathsRedraw,
 } from './spelling/arrow.js';
 
+function wireInteractionGuards() {
+  const root = els.app;
+  if (!root) return;
+
+  root.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+  });
+
+  root.addEventListener('dragstart', (e) => {
+    e.preventDefault();
+  });
+
+  root.addEventListener('selectstart', (e) => {
+    e.preventDefault();
+  });
+}
+
 export function wireApp() {
+  wireInteractionGuards();
+
   els.pickMath.addEventListener('click', () => {
     playSelectSound();
     pickRandomBg();

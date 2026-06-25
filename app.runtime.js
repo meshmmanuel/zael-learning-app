@@ -3542,7 +3542,21 @@
   }
 
   // src/bootstrap.js
+  function wireInteractionGuards() {
+    const root = els.app;
+    if (!root) return;
+    root.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+    });
+    root.addEventListener("dragstart", (e) => {
+      e.preventDefault();
+    });
+    root.addEventListener("selectstart", (e) => {
+      e.preventDefault();
+    });
+  }
   function wireApp() {
+    wireInteractionGuards();
     els.pickMath.addEventListener("click", () => {
       playSelectSound();
       pickRandomBg();
