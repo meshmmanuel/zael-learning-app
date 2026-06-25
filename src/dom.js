@@ -110,6 +110,7 @@ export const els = {
   mathOrderBlank: document.getElementById('math-order-blank'),
   mathCompareView: document.getElementById('math-compare-view'),
   mathComparePrompt: document.getElementById('math-compare-prompt'),
+  mathCompareHints: document.getElementById('math-compare-hints'),
   mathComparePair: document.getElementById('math-compare-pair'),
   emojiZone: document.getElementById('emoji-zone'),
   diffEasy: document.getElementById('math-diff-easy'),

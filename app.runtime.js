@@ -180,6 +180,7 @@
     mathOrderBlank: document.getElementById("math-order-blank"),
     mathCompareView: document.getElementById("math-compare-view"),
     mathComparePrompt: document.getElementById("math-compare-prompt"),
+    mathCompareHints: document.getElementById("math-compare-hints"),
     mathComparePair: document.getElementById("math-compare-pair"),
     emojiZone: document.getElementById("emoji-zone"),
     diffEasy: document.getElementById("math-diff-easy"),
@@ -1880,6 +1881,92 @@
     return shuffle(qs);
   }
 
+  // src/math/compare-visual.js
+  function decomposeNumber(n) {
+    return {
+      hundreds: Math.floor(n / 100),
+      tens: Math.floor(n % 100 / 10),
+      ones: n % 10
+    };
+  }
+  function placeValueLabel(n) {
+    const { hundreds, tens, ones } = decomposeNumber(n);
+    const parts = [];
+    if (hundreds) parts.push(`${hundreds} group${hundreds > 1 ? "s" : ""} of one hundred`);
+    if (tens) parts.push(`${tens} bundle${tens > 1 ? "s" : ""} of ten`);
+    if (ones) parts.push(`${ones} stick${ones > 1 ? "s" : ""}`);
+    return parts.join(" plus ") || "zero";
+  }
+  function createBundleEl() {
+    const bundle = document.createElement("span");
+    bundle.className = "compare-bundle";
+    bundle.setAttribute("aria-hidden", "true");
+    const sticks = document.createElement("span");
+    sticks.className = "compare-bundle-sticks";
+    for (let i = 0; i < 10; i++) {
+      const stick = document.createElement("span");
+      stick.className = "compare-bundle-stick";
+      sticks.appendChild(stick);
+    }
+    const band = document.createElement("span");
+    band.className = "compare-bundle-band";
+    sticks.appendChild(band);
+    bundle.appendChild(sticks);
+    return bundle;
+  }
+  function createStickEl() {
+    const stick = document.createElement("span");
+    stick.className = "compare-stick";
+    stick.setAttribute("aria-hidden", "true");
+    return stick;
+  }
+  function createHundredEl() {
+    const block = document.createElement("span");
+    block.className = "compare-hundred";
+    block.setAttribute("aria-hidden", "true");
+    block.textContent = "100";
+    return block;
+  }
+  function createPlaceValueVisual(n) {
+    const { hundreds, tens, ones } = decomposeNumber(n);
+    const visual = document.createElement("div");
+    visual.className = "compare-place-value";
+    if (hundreds > 0) {
+      const row = document.createElement("div");
+      row.className = "compare-place-row compare-place-row--hundreds";
+      for (let i = 0; i < hundreds; i++) row.appendChild(createHundredEl());
+      visual.appendChild(row);
+    }
+    if (tens > 0) {
+      const row = document.createElement("div");
+      row.className = "compare-place-row compare-place-row--tens";
+      for (let i = 0; i < tens; i++) row.appendChild(createBundleEl());
+      visual.appendChild(row);
+    }
+    if (ones > 0) {
+      const row = document.createElement("div");
+      row.className = "compare-place-row compare-place-row--ones";
+      for (let i = 0; i < ones; i++) row.appendChild(createStickEl());
+      visual.appendChild(row);
+    }
+    if (hundreds === 0 && tens === 0 && ones === 0) {
+      const row = document.createElement("div");
+      row.className = "compare-place-row compare-place-row--empty";
+      row.textContent = "0";
+      visual.appendChild(row);
+    }
+    return visual;
+  }
+  function createHintBundle() {
+    return createBundleEl();
+  }
+  function createHintStick() {
+    return createStickEl();
+  }
+  function createHintHundred() {
+    return createHundredEl();
+  }
+
   // src/math/play.js
   function syncMathAnswerSection(compareRound = isCompareMode()) {
     const hidePicker = compareRound;
@@ -2086,14 +2173,41 @@
       els.feedback.className = "feedback-msg";
     }, BASE_CONFIG2.wrongAnswerUnlockDelayMs);
   }
+  function renderCompareHints() {
+    if (!els.mathCompareHints) return;
+    els.mathCompareHints.innerHTML = "";
+    const label = document.createElement("span");
+    label.className = "compare-hints-label";
+    label.textContent = "Hints:";
+    els.mathCompareHints.appendChild(label);
+    const items = [];
+    if (state.mathDifficulty === "hard") {
+      items.push({ visual: createHintHundred(), text: "= 100" });
+    }
+    items.push({ visual: createHintBundle(), text: "= 10" });
+    items.push({ visual: createHintStick(), text: "= 1" });
+    items.forEach(({ visual, text }) => {
+      const item = document.createElement("span");
+      item.className = "compare-hint-item";
+      item.appendChild(visual);
+      const eq = document.createElement("span");
+      eq.className = "compare-hint-eq";
+      eq.textContent = text;
+      item.appendChild(eq);
+      els.mathCompareHints.appendChild(item);
+    });
+  }
   function renderCompareQuestion() {
     const q = state.currentQ;
     if (els.mathArithmeticView) els.mathArithmeticView.hidden = true;
     if (els.mathOrderView) els.mathOrderView.hidden = true;
     if (els.mathCompareView) els.mathCompareView.hidden = false;
+    if (els.mathBlank) els.mathBlank.hidden = true;
+    if (els.mathOrderBlank) els.mathOrderBlank.hidden = true;
     if (els.mathDisplay) els.mathDisplay.classList.remove("math-display--order");
     if (els.mathDisplay) els.mathDisplay.classList.add("math-display--compare");
     if (els.mathComparePrompt) els.mathComparePrompt.textContent = comparePromptText(q);
+    renderCompareHints();
     if (!els.mathComparePair) return;
     els.mathComparePair.innerHTML = "";
     const symbol = compareSymbolBetween(q);
@@ -2113,8 +2227,12 @@
       btn.type = "button";
       btn.className = "math-compare-choice";
       btn.dataset.side = side;
-      btn.textContent = String(value);
-      btn.setAttribute("aria-label", `Number ${value}`);
+      btn.setAttribute("aria-label", `Number ${value}, ${placeValueLabel(value)}`);
+      const num = document.createElement("span");
+      num.className = "math-compare-num";
+      num.textContent = String(value);
+      btn.appendChild(num);
+      btn.appendChild(createPlaceValueVisual(value));
       btn.onclick = () => onComparePick(side);
       els.mathComparePair.appendChild(btn);
     });
@@ -2123,6 +2241,7 @@
     if (els.mathArithmeticView) els.mathArithmeticView.hidden = false;
     if (els.mathOrderView) els.mathOrderView.hidden = true;
     if (els.mathCompareView) els.mathCompareView.hidden = true;
+    if (els.mathBlank) els.mathBlank.hidden = false;
     if (els.mathDisplay) els.mathDisplay.classList.remove("math-display--order");
     if (els.mathDisplay) els.mathDisplay.classList.remove("math-display--compare");
     if (els.mathOrderSequence) {
