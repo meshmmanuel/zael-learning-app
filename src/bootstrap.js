@@ -31,7 +31,7 @@ import {
   updateAdditionZone,
   updateSubtractionZone,
 } from './math/play.js';
-import { isOrderQuestion } from './utils/index.js';
+import { isOrderQuestion, isCompareQuestion } from './utils/index.js';
 import {
   syncSpellingSetupUI,
   setSpellingMode,
@@ -192,6 +192,9 @@ export function wireApp() {
   els.modeSub.addEventListener('click', () => setMathMode('sub'));
   if (els.modeBeforeAfter) els.modeBeforeAfter.addEventListener('click', () => setMathMode('beforeAfter'));
   if (els.modeBetween) els.modeBetween.addEventListener('click', () => setMathMode('between'));
+  if (els.modeLessThan) els.modeLessThan.addEventListener('click', () => setMathMode('lessThan'));
+  if (els.modeGreaterThan) els.modeGreaterThan.addEventListener('click', () => setMathMode('greaterThan'));
+  if (els.modeCompareMixed) els.modeCompareMixed.addEventListener('click', () => setMathMode('compareMixed'));
   els.diffEasy.addEventListener('click', () => setMathDifficulty('easy'));
   els.diffMedium.addEventListener('click', () => setMathDifficulty('medium'));
   els.diffHard.addEventListener('click', () => setMathDifficulty('hard'));
@@ -241,7 +244,7 @@ export function wireApp() {
     state.hintOn = !state.hintOn;
     updateHintToggle();
     if (state.soundOn) playToggleSound();
-    if (state.currentQ && !isOrderQuestion(state.currentQ)) {
+    if (state.currentQ && !isOrderQuestion(state.currentQ) && !isCompareQuestion(state.currentQ)) {
       if (state.currentQ.type === 'add') updateAdditionZone();
       else updateSubtractionZone();
     }
@@ -269,11 +272,13 @@ export function wireApp() {
     if (els.mainScreen.style.display === 'none') return;
     if (isTypingTarget(e.target)) return;
     if (e.key === 'Enter') {
+      if (isCompareQuestion(state.currentQ)) return;
       playSubmitSound();
       checkAnswer();
       return;
     }
     if (/^\d$/.test(e.key)) {
+      if (isCompareQuestion(state.currentQ)) return;
       state.keyInputBuffer += e.key;
       if (state.keyInputTimer) clearTimeout(state.keyInputTimer);
       state.keyInputTimer = setTimeout(() => {

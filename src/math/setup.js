@@ -9,6 +9,9 @@ export function syncMathSetupUI() {
     sub: els.modeSub,
     beforeAfter: els.modeBeforeAfter,
     between: els.modeBetween,
+    lessThan: els.modeLessThan,
+    greaterThan: els.modeGreaterThan,
+    compareMixed: els.modeCompareMixed,
   };
   Object.values(modeMap).forEach((btn) => {
     if (btn) btn.setAttribute('aria-pressed', 'false');

@@ -60,7 +60,7 @@
     maxAnswer: 9,
     soundOn: true,
     hintOn: false,
-    stats: { addCorrect: 0, addTotal: 0, subCorrect: 0, subTotal: 0, orderCorrect: 0, orderTotal: 0 },
+    stats: { addCorrect: 0, addTotal: 0, subCorrect: 0, subTotal: 0, orderCorrect: 0, orderTotal: 0, compareCorrect: 0, compareTotal: 0 },
     maxPickerValue: 9,
     keyInputBuffer: "",
     keyInputTimer: null,
@@ -169,12 +169,18 @@
     modeSub: document.getElementById("math-mode-sub"),
     modeBeforeAfter: document.getElementById("math-mode-before-after"),
     modeBetween: document.getElementById("math-mode-between"),
+    modeLessThan: document.getElementById("math-mode-less-than"),
+    modeGreaterThan: document.getElementById("math-mode-greater-than"),
+    modeCompareMixed: document.getElementById("math-mode-compare-mixed"),
     mathDisplay: document.getElementById("math-display"),
     mathArithmeticView: document.getElementById("math-arithmetic-view"),
     mathOrderView: document.getElementById("math-order-view"),
     mathOrderPrompt: document.getElementById("math-order-prompt"),
     mathOrderSequence: document.getElementById("math-order-sequence"),
     mathOrderBlank: document.getElementById("math-order-blank"),
+    mathCompareView: document.getElementById("math-compare-view"),
+    mathComparePrompt: document.getElementById("math-compare-prompt"),
+    mathComparePair: document.getElementById("math-compare-pair"),
     emojiZone: document.getElementById("emoji-zone"),
     diffEasy: document.getElementById("math-diff-easy"),
     diffMedium: document.getElementById("math-diff-medium"),
@@ -186,6 +192,8 @@
     num2Val: document.getElementById("num2-val"),
     mathBlank: document.getElementById("math-blank"),
     feedback: document.getElementById("feedback-msg"),
+    mathAnswerSection: document.getElementById("math-answer-section"),
+    mathAnswerLabel: document.getElementById("math-answer-label"),
     numberPicker: document.getElementById("number-picker"),
     emojiContent: document.getElementById("emoji-content"),
     emojiZoneTitle: document.getElementById("emoji-zone-title"),
@@ -251,7 +259,29 @@
   };
   var MATH_MODES_ARITH = ["mixed", "add", "sub"];
   var MATH_MODES_ORDER = ["beforeAfter", "between"];
-  var MATH_MODES_ALL = [...MATH_MODES_ARITH, ...MATH_MODES_ORDER];
+  var MATH_MODES_COMPARE = ["lessThan", "greaterThan", "compareMixed"];
+  var COMPARE_PRESETS = {
+    easy: {
+      min: 1,
+      max: 20,
+      sameTensWeight: 0.1,
+      minGap: 3
+    },
+    medium: {
+      min: 10,
+      max: 50,
+      sameTensWeight: 0.5,
+      minGap: 1
+    },
+    hard: {
+      min: 100,
+      max: 999,
+      sameTensWeight: 0.4,
+      minGap: 1,
+      closeGapMax: 3
+    }
+  };
+  var MATH_MODES_ALL = [...MATH_MODES_ARITH, ...MATH_MODES_ORDER, ...MATH_MODES_COMPARE];
   var THEMES = [
     { name: "fruits", emojis: ["\u{1F34E}", "\u{1F34B}", "\u{1F347}"] },
     { name: "animals", emojis: ["\u{1F438}", "\u{1F436}", "\u{1F431}"] },
@@ -1164,11 +1194,20 @@
   function isOrderMode(mode = state.mathMode) {
     return MATH_MODES_ORDER.includes(mode);
   }
+  function isCompareMode(mode = state.mathMode) {
+    return MATH_MODES_COMPARE.includes(mode);
+  }
   function isOrderQuestion(q) {
     return q && (q.type === "beforeAfter" || q.type === "between");
   }
+  function isCompareQuestion(q) {
+    return q && q.type === "compare";
+  }
   function getOrderRange() {
     return ORDER_RANGES[state.mathDifficulty] || ORDER_RANGES.medium;
+  }
+  function getComparePreset() {
+    return COMPARE_PRESETS[state.mathDifficulty] || COMPARE_PRESETS.medium;
   }
   function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
@@ -1663,7 +1702,10 @@
       add: els.modeAdd,
       sub: els.modeSub,
       beforeAfter: els.modeBeforeAfter,
-      between: els.modeBetween
+      between: els.modeBetween,
+      lessThan: els.modeLessThan,
+      greaterThan: els.modeGreaterThan,
+      compareMixed: els.modeCompareMixed
     };
     Object.values(modeMap).forEach((btn) => {
       if (btn) btn.setAttribute("aria-pressed", "false");
@@ -1737,8 +1779,77 @@
     var _a;
     return (_a = q.blankIndices.find((i) => state.orderAnswers[i] === void 0)) != null ? _a : null;
   }
+  function genComparePair(preset) {
+    const { min, max, sameTensWeight = 0, minGap = 1, closeGapMax } = preset;
+    const useSameTens = Math.random() < sameTensWeight && max >= 20;
+    const useCloseGap = closeGapMax && Math.random() < 0.6;
+    for (let attempt = 0; attempt < 50; attempt++) {
+      let a2;
+      let b2;
+      if (useCloseGap && max - min > closeGapMax) {
+        a2 = rnd(min, max - closeGapMax);
+        b2 = a2 + rnd(1, closeGapMax);
+        if (Math.random() < 0.5) [a2, b2] = [b2, a2];
+      } else if (useSameTens) {
+        const tensMin = Math.max(1, Math.floor(min / 10));
+        const tensMax = Math.floor(max / 10);
+        if (tensMax < tensMin) continue;
+        const tens = rnd(tensMin, tensMax);
+        const low = Math.max(min, tens * 10);
+        const high = Math.min(max, tens * 10 + 9);
+        if (high <= low) continue;
+        a2 = rnd(low, high);
+        b2 = rnd(low, high);
+        let guard = 0;
+        while (b2 === a2 && guard < 20) {
+          b2 = rnd(low, high);
+          guard++;
+        }
+        if (b2 === a2) continue;
+      } else {
+        a2 = rnd(min, max);
+        b2 = rnd(min, max);
+        let guard = 0;
+        while (b2 === a2 && guard < 20) {
+          b2 = rnd(min, max);
+          guard++;
+        }
+        if (b2 === a2) continue;
+      }
+      if (Math.abs(a2 - b2) < minGap) continue;
+      return [a2, b2];
+    }
+    const a = rnd(min, Math.max(min, max - minGap));
+    const b = rnd(a + minGap, max);
+    return [a, b];
+  }
+  function resolveCompareDirection(mode) {
+    if (mode === "lessThan") return "less";
+    if (mode === "greaterThan") return "greater";
+    return Math.random() < 0.5 ? "less" : "greater";
+  }
+  function genCompareQuestion(direction) {
+    const preset = getComparePreset();
+    const [left, right] = genComparePair(preset);
+    const smallerSide = left < right ? "left" : "right";
+    const correctSide = direction === "less" ? smallerSide : smallerSide === "left" ? "right" : "left";
+    return {
+      type: "compare",
+      direction,
+      left,
+      right,
+      correctSide
+    };
+  }
   function genQuestions() {
     const total = BASE_CONFIG2.totalQuestions;
+    if (isCompareMode()) {
+      const qs2 = [];
+      for (let i = 0; i < total; i++) {
+        qs2.push(genCompareQuestion(resolveCompareDirection(state.mathMode)));
+      }
+      return shuffle(qs2);
+    }
     if (isOrderMode()) {
       const qs2 = [];
       for (let i = 0; i < total; i++) {
@@ -1770,6 +1881,12 @@
   }
 
   // src/math/play.js
+  function syncMathAnswerSection(compareRound = isCompareMode()) {
+    const hidePicker = compareRound;
+    if (els.mathAnswerLabel) els.mathAnswerLabel.hidden = hidePicker;
+    if (els.numberPicker) els.numberPicker.hidden = hidePicker;
+    if (els.submitBtn) els.submitBtn.hidden = hidePicker;
+  }
   function startMathRound() {
     state.activeGame = "math";
     saveMathPrefs();
@@ -1778,16 +1895,29 @@
     state.emoji = state.theme.emojis[Math.floor(Math.random() * state.theme.emojis.length)];
     state.questions = genQuestions();
     const orderRound = isOrderMode();
+    const compareRound = isCompareMode();
     state.maxAnswer = Math.max(...state.questions.map((q) => {
       if (isOrderQuestion(q)) return Math.max(...Object.values(q.answers));
+      if (isCompareQuestion(q)) return Math.max(q.left, q.right);
       return q.ans;
     }));
     state.maxPickerValue = orderRound ? Math.max(...state.questions.flatMap((q) => q.choices)) : state.maxAnswer;
     state.qIndex = 0;
     state.score = 0;
-    state.stats = { addCorrect: 0, addTotal: 0, subCorrect: 0, subTotal: 0, orderCorrect: 0, orderTotal: 0 };
-    if (els.hintToggle) els.hintToggle.style.display = orderRound ? "none" : "";
-    if (els.emojiZone) els.emojiZone.style.display = orderRound ? "none" : "";
+    state.stats = {
+      addCorrect: 0,
+      addTotal: 0,
+      subCorrect: 0,
+      subTotal: 0,
+      orderCorrect: 0,
+      orderTotal: 0,
+      compareCorrect: 0,
+      compareTotal: 0
+    };
+    const hideHelpers = orderRound || compareRound;
+    if (els.hintToggle) els.hintToggle.style.display = hideHelpers ? "none" : "";
+    if (els.emojiZone) els.emojiZone.style.display = hideHelpers ? "none" : "";
+    syncMathAnswerSection(compareRound);
     showScreen("play");
     loadQuestion();
   }
@@ -1849,8 +1979,9 @@
     const q = state.currentQ;
     if (els.mathArithmeticView) els.mathArithmeticView.hidden = true;
     if (els.mathOrderView) els.mathOrderView.hidden = false;
+    if (els.mathCompareView) els.mathCompareView.hidden = true;
     if (els.mathDisplay) els.mathDisplay.classList.add("math-display--order");
-    if (els.mathArithmeticView) els.mathArithmeticView.hidden = true;
+    if (els.mathDisplay) els.mathDisplay.classList.remove("math-display--compare");
     if (els.mathOrderBlank) els.mathOrderBlank.hidden = true;
     if (els.mathBlank) els.mathBlank.textContent = "?";
     if (els.mathOrderPrompt) {
@@ -1899,10 +2030,101 @@
       els.mathOrderBlank.hidden = true;
     }
   }
+  function compareSymbolBetween(q) {
+    return q.left < q.right ? "<" : ">";
+  }
+  function comparePromptText(q) {
+    if (q.direction === "less") return "Tap the number that is less";
+    return "Tap the number that is greater";
+  }
+  function compareFeedbackLine(q) {
+    const smaller = q.left < q.right ? q.left : q.right;
+    const larger = q.left < q.right ? q.right : q.left;
+    return `${smaller} < ${larger}`;
+  }
+  function clearCompareChoiceMarks() {
+    if (!els.mathComparePair) return;
+    els.mathComparePair.querySelectorAll(".math-compare-choice").forEach((el) => {
+      el.classList.remove("math-compare-choice--correct", "math-compare-choice--wrong");
+    });
+  }
+  function markCompareChoice(side, kind) {
+    var _a;
+    const choice = (_a = els.mathComparePair) == null ? void 0 : _a.querySelector(`.math-compare-choice[data-side="${side}"]`);
+    if (!choice) return;
+    choice.classList.remove("math-compare-choice--correct", "math-compare-choice--wrong");
+    if (kind === "correct") choice.classList.add("math-compare-choice--correct");
+    if (kind === "wrong") choice.classList.add("math-compare-choice--wrong");
+  }
+  function onComparePick(side) {
+    if (state.blocked || !isCompareQuestion(state.currentQ)) return;
+    const q = state.currentQ;
+    playSelectSound();
+    if (side === q.correctSide) {
+      state.blocked = true;
+      state.stats.compareTotal++;
+      state.stats.compareCorrect++;
+      state.score++;
+      markCompareChoice(side, "correct");
+      els.feedback.textContent = `${compareFeedbackLine(q)} \u2014 ${["Amazing! \u{1F389}", "You got it! \u2B50", "Brilliant! \u{1F31F}"][Math.floor(Math.random() * 3)]}`;
+      els.feedback.className = "feedback-msg right";
+      playCelebrationSound();
+      if (!prefersReducedMotion) launchConfetti();
+      setTimeout(nextQuestion, BASE_CONFIG2.nextQuestionDelayMs);
+      return;
+    }
+    state.blocked = true;
+    state.stats.compareTotal++;
+    markCompareChoice(side, "wrong");
+    els.feedback.textContent = q.direction === "less" ? "Pick the smaller number! Try again \u{1F4AA}" : "Pick the bigger number! Try again \u{1F4AA}";
+    els.feedback.className = "feedback-msg wrong";
+    playWrongSound();
+    setTimeout(() => {
+      state.blocked = false;
+      clearCompareChoiceMarks();
+      els.feedback.textContent = "";
+      els.feedback.className = "feedback-msg";
+    }, BASE_CONFIG2.wrongAnswerUnlockDelayMs);
+  }
+  function renderCompareQuestion() {
+    const q = state.currentQ;
+    if (els.mathArithmeticView) els.mathArithmeticView.hidden = true;
+    if (els.mathOrderView) els.mathOrderView.hidden = true;
+    if (els.mathCompareView) els.mathCompareView.hidden = false;
+    if (els.mathDisplay) els.mathDisplay.classList.remove("math-display--order");
+    if (els.mathDisplay) els.mathDisplay.classList.add("math-display--compare");
+    if (els.mathComparePrompt) els.mathComparePrompt.textContent = comparePromptText(q);
+    if (!els.mathComparePair) return;
+    els.mathComparePair.innerHTML = "";
+    const symbol = compareSymbolBetween(q);
+    const parts = [
+      { side: "left", value: q.left },
+      { side: "right", value: q.right }
+    ];
+    parts.forEach(({ side, value }, index) => {
+      if (index > 0) {
+        const sign = document.createElement("span");
+        sign.className = "math-compare-symbol";
+        sign.textContent = symbol;
+        sign.setAttribute("aria-hidden", "true");
+        els.mathComparePair.appendChild(sign);
+      }
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "math-compare-choice";
+      btn.dataset.side = side;
+      btn.textContent = String(value);
+      btn.setAttribute("aria-label", `Number ${value}`);
+      btn.onclick = () => onComparePick(side);
+      els.mathComparePair.appendChild(btn);
+    });
+  }
   function renderArithmeticQuestion() {
     if (els.mathArithmeticView) els.mathArithmeticView.hidden = false;
     if (els.mathOrderView) els.mathOrderView.hidden = true;
+    if (els.mathCompareView) els.mathCompareView.hidden = true;
     if (els.mathDisplay) els.mathDisplay.classList.remove("math-display--order");
+    if (els.mathDisplay) els.mathDisplay.classList.remove("math-display--compare");
     if (els.mathOrderSequence) {
       els.mathOrderSequence.innerHTML = "";
       els.mathOrderSequence.setAttribute("aria-hidden", "true");
@@ -1925,18 +2147,21 @@
     state.currentQ = state.questions[state.qIndex];
     const total = BASE_CONFIG2.totalQuestions;
     const orderQ = isOrderQuestion(state.currentQ);
+    const compareQ = isCompareQuestion(state.currentQ);
     els.qLabel.textContent = `Question ${state.qIndex + 1} of ${total}`;
     els.progressFill.style.width = `${(state.qIndex + 1) / total * 100}%`;
     els.feedback.textContent = "";
     els.feedback.className = "feedback-msg";
-    if (orderQ) {
+    if (compareQ) {
+      renderCompareQuestion();
+    } else if (orderQ) {
       state.orderActiveBlankIndex = firstUnfilledBlankIndex(state.currentQ);
       renderOrderQuestion();
     } else {
       renderArithmeticQuestion();
     }
-    buildNumberPicker();
-    if (orderQ) {
+    if (!compareQ) buildNumberPicker();
+    if (compareQ || orderQ) {
       if (els.emojiZone) els.emojiZone.style.display = "none";
     } else {
       if (els.emojiZone) els.emojiZone.style.display = "";
@@ -2245,7 +2470,8 @@
     const addPct = state.stats.addTotal ? Math.round(state.stats.addCorrect / state.stats.addTotal * 100) : 0;
     const subPct = state.stats.subTotal ? Math.round(state.stats.subCorrect / state.stats.subTotal * 100) : 0;
     const orderPct = state.stats.orderTotal ? Math.round(state.stats.orderCorrect / state.stats.orderTotal * 100) : 0;
-    const statsLine = isOrderMode() ? `Number order: ${orderPct}%` : `Addition: ${addPct}% \xB7 Subtraction: ${subPct}%`;
+    const comparePct = state.stats.compareTotal ? Math.round(state.stats.compareCorrect / state.stats.compareTotal * 100) : 0;
+    const statsLine = isCompareMode() ? `Comparing numbers: ${comparePct}%` : isOrderMode() ? `Number order: ${orderPct}%` : `Addition: ${addPct}% \xB7 Subtraction: ${subPct}%`;
     els.endScreen.innerHTML = `
     <div class="end-trophy">\u{1F3C6}</div>
     <div class="end-title">${msg}</div>
@@ -2266,6 +2492,7 @@
       syncMathSetupUI();
       if (els.hintToggle) els.hintToggle.style.display = "";
       if (els.emojiZone) els.emojiZone.style.display = "";
+      syncMathAnswerSection(false);
     };
     document.getElementById("home-btn").onclick = () => {
       state.activeGame = "math";
@@ -2277,8 +2504,9 @@
   }
   function updateSubmitState() {
     const orderQ = state.currentQ && isOrderQuestion(state.currentQ);
+    const compareQ = state.currentQ && isCompareQuestion(state.currentQ);
     const ready = orderQ ? isOrderAnswerComplete() : state.selectedAnswer !== null;
-    els.submitBtn.disabled = state.blocked || !ready;
+    if (els.submitBtn) els.submitBtn.disabled = state.blocked || !ready || compareQ;
   }
 
   // src/spelling/setup.js
@@ -3319,6 +3547,9 @@
     els.modeSub.addEventListener("click", () => setMathMode("sub"));
     if (els.modeBeforeAfter) els.modeBeforeAfter.addEventListener("click", () => setMathMode("beforeAfter"));
     if (els.modeBetween) els.modeBetween.addEventListener("click", () => setMathMode("between"));
+    if (els.modeLessThan) els.modeLessThan.addEventListener("click", () => setMathMode("lessThan"));
+    if (els.modeGreaterThan) els.modeGreaterThan.addEventListener("click", () => setMathMode("greaterThan"));
+    if (els.modeCompareMixed) els.modeCompareMixed.addEventListener("click", () => setMathMode("compareMixed"));
     els.diffEasy.addEventListener("click", () => setMathDifficulty("easy"));
     els.diffMedium.addEventListener("click", () => setMathDifficulty("medium"));
     els.diffHard.addEventListener("click", () => setMathDifficulty("hard"));
@@ -3361,7 +3592,7 @@
       state.hintOn = !state.hintOn;
       updateHintToggle();
       if (state.soundOn) playToggleSound2();
-      if (state.currentQ && !isOrderQuestion(state.currentQ)) {
+      if (state.currentQ && !isOrderQuestion(state.currentQ) && !isCompareQuestion(state.currentQ)) {
         if (state.currentQ.type === "add") updateAdditionZone();
         else updateSubtractionZone();
       }
@@ -3387,11 +3618,13 @@
       if (els.mainScreen.style.display === "none") return;
       if (isTypingTarget(e.target)) return;
       if (e.key === "Enter") {
+        if (isCompareQuestion(state.currentQ)) return;
         playSubmitSound();
         checkAnswer();
         return;
       }
       if (/^\d$/.test(e.key)) {
+        if (isCompareQuestion(state.currentQ)) return;
         state.keyInputBuffer += e.key;
         if (state.keyInputTimer) clearTimeout(state.keyInputTimer);
         state.keyInputTimer = setTimeout(() => {

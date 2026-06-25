@@ -68,6 +68,15 @@
     </fieldset>
 
     <fieldset class="setup-fieldset">
+      <legend class="setup-legend">Comparing numbers</legend>
+      <div class="pick-row" role="group" aria-label="Greater than and less than">
+        <button type="button" class="pick-btn" id="math-mode-less-than" aria-pressed="false">Less than ⬇️</button>
+        <button type="button" class="pick-btn" id="math-mode-greater-than" aria-pressed="false">Greater than ⬆️</button>
+        <button type="button" class="pick-btn" id="math-mode-compare-mixed" aria-pressed="false">Both ✨</button>
+      </div>
+    </fieldset>
+
+    <fieldset class="setup-fieldset">
       <legend class="setup-legend">How tricky should it be?</legend>
       <div class="pick-row" role="group" aria-label="Difficulty">
         <button type="button" class="pick-btn" id="math-diff-easy" aria-pressed="false">Easy 🌱</button>
@@ -312,14 +321,18 @@
           <div class="math-order-sequence" id="math-order-sequence" aria-hidden="true"></div>
           <div class="math-blank math-order-blank" id="math-order-blank">?</div>
         </div>
+        <div id="math-compare-view" class="math-compare-view" hidden>
+          <p class="math-compare-prompt" id="math-compare-prompt"></p>
+          <div class="math-compare-pair" id="math-compare-pair" role="group" aria-label="Pick the correct number"></div>
+        </div>
       </div>
       <div class="emoji-zone" id="emoji-zone">
         <div class="emoji-zone-title" id="emoji-zone-title">Count them all!</div>
         <div id="emoji-content"></div>
         <div class="sub-hint" id="sub-hint" style="display:none"></div>
       </div>
-      <div class="answer-section">
-        <div class="answer-label">My answer is...</div>
+      <div class="answer-section" id="math-answer-section">
+        <div class="answer-label" id="math-answer-label">My answer is...</div>
         <div class="number-picker" id="number-picker" role="group" aria-label="Pick an answer number"></div>
         <div class="feedback-msg" id="feedback-msg" aria-live="polite"></div>
         <button class="submit-btn" id="submit-btn" type="button">That's my answer! ✅</button>

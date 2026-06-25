@@ -1,5 +1,10 @@
 import { state } from '../state.js';
-import { MATH_MODES_ORDER, ORDER_RANGES } from '../config/index.js';
+import {
+  MATH_MODES_ORDER,
+  MATH_MODES_COMPARE,
+  ORDER_RANGES,
+  COMPARE_PRESETS,
+} from '../config/index.js';
 
 export const rnd = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 
@@ -7,12 +12,24 @@ export function isOrderMode(mode = state.mathMode) {
   return MATH_MODES_ORDER.includes(mode);
 }
 
+export function isCompareMode(mode = state.mathMode) {
+  return MATH_MODES_COMPARE.includes(mode);
+}
+
 export function isOrderQuestion(q) {
   return q && (q.type === 'beforeAfter' || q.type === 'between');
 }
 
+export function isCompareQuestion(q) {
+  return q && q.type === 'compare';
+}
+
 export function getOrderRange() {
   return ORDER_RANGES[state.mathDifficulty] || ORDER_RANGES.medium;
+}
+
+export function getComparePreset() {
+  return COMPARE_PRESETS[state.mathDifficulty] || COMPARE_PRESETS.medium;
 }
 
 export function shuffle(arr) {

@@ -58,7 +58,7 @@ export const state = {
   maxAnswer: 9,
   soundOn: true,
   hintOn: false,
-  stats: { addCorrect: 0, addTotal: 0, subCorrect: 0, subTotal: 0, orderCorrect: 0, orderTotal: 0 },
+  stats: { addCorrect: 0, addTotal: 0, subCorrect: 0, subTotal: 0, orderCorrect: 0, orderTotal: 0, compareCorrect: 0, compareTotal: 0 },
   maxPickerValue: 9,
   keyInputBuffer: '',
   keyInputTimer: null,

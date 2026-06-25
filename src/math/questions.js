@@ -8,8 +8,9 @@ import {
   rnd,
   shuffle,
   isOrderMode,
-  isOrderQuestion,
+  isCompareMode,
   getOrderRange,
+  getComparePreset,
 } from '../utils/index.js';
 
 export function buildSequenceChoices(correctValues, sequenceValues, rangeMin, rangeMax) {
@@ -65,8 +66,83 @@ export function firstUnfilledBlankIndex(q) {
   return q.blankIndices.find((i) => state.orderAnswers[i] === undefined) ?? null;
 }
 
+function genComparePair(preset) {
+  const { min, max, sameTensWeight = 0, minGap = 1, closeGapMax } = preset;
+  const useSameTens = Math.random() < sameTensWeight && max >= 20;
+  const useCloseGap = closeGapMax && Math.random() < 0.6;
+
+  for (let attempt = 0; attempt < 50; attempt++) {
+    let a;
+    let b;
+    if (useCloseGap && max - min > closeGapMax) {
+      a = rnd(min, max - closeGapMax);
+      b = a + rnd(1, closeGapMax);
+      if (Math.random() < 0.5) [a, b] = [b, a];
+    } else if (useSameTens) {
+      const tensMin = Math.max(1, Math.floor(min / 10));
+      const tensMax = Math.floor(max / 10);
+      if (tensMax < tensMin) continue;
+      const tens = rnd(tensMin, tensMax);
+      const low = Math.max(min, tens * 10);
+      const high = Math.min(max, tens * 10 + 9);
+      if (high <= low) continue;
+      a = rnd(low, high);
+      b = rnd(low, high);
+      let guard = 0;
+      while (b === a && guard < 20) {
+        b = rnd(low, high);
+        guard++;
+      }
+      if (b === a) continue;
+    } else {
+      a = rnd(min, max);
+      b = rnd(min, max);
+      let guard = 0;
+      while (b === a && guard < 20) {
+        b = rnd(min, max);
+        guard++;
+      }
+      if (b === a) continue;
+    }
+    if (Math.abs(a - b) < minGap) continue;
+    return [a, b];
+  }
+
+  const a = rnd(min, Math.max(min, max - minGap));
+  const b = rnd(a + minGap, max);
+  return [a, b];
+}
+
+function resolveCompareDirection(mode) {
+  if (mode === 'lessThan') return 'less';
+  if (mode === 'greaterThan') return 'greater';
+  return Math.random() < 0.5 ? 'less' : 'greater';
+}
+
+export function genCompareQuestion(direction) {
+  const preset = getComparePreset();
+  const [left, right] = genComparePair(preset);
+  const smallerSide = left < right ? 'left' : 'right';
+  const correctSide = direction === 'less' ? smallerSide : (smallerSide === 'left' ? 'right' : 'left');
+  return {
+    type: 'compare',
+    direction,
+    left,
+    right,
+    correctSide,
+  };
+}
+
 export function genQuestions() {
   const total = BASE_CONFIG.totalQuestions;
+
+  if (isCompareMode()) {
+    const qs = [];
+    for (let i = 0; i < total; i++) {
+      qs.push(genCompareQuestion(resolveCompareDirection(state.mathMode)));
+    }
+    return shuffle(qs);
+  }
 
   if (isOrderMode()) {
     const qs = [];

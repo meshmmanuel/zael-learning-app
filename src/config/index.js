@@ -56,7 +56,32 @@ export const ORDER_LAYOUT = {
 
 export const MATH_MODES_ARITH = ['mixed', 'add', 'sub'];
 export const MATH_MODES_ORDER = ['beforeAfter', 'between'];
-export const MATH_MODES_ALL = [...MATH_MODES_ARITH, ...MATH_MODES_ORDER];
+export const MATH_MODES_COMPARE = ['lessThan', 'greaterThan', 'compareMixed'];
+
+/** Number comparison: range and pair tricks per difficulty (not just bigger numbers). */
+export const COMPARE_PRESETS = {
+  easy: {
+    min: 1,
+    max: 20,
+    sameTensWeight: 0.1,
+    minGap: 3,
+  },
+  medium: {
+    min: 10,
+    max: 50,
+    sameTensWeight: 0.5,
+    minGap: 1,
+  },
+  hard: {
+    min: 100,
+    max: 999,
+    sameTensWeight: 0.4,
+    minGap: 1,
+    closeGapMax: 3,
+  },
+};
+
+export const MATH_MODES_ALL = [...MATH_MODES_ARITH, ...MATH_MODES_ORDER, ...MATH_MODES_COMPARE];
 
 export const THEMES = [
   { name: 'fruits', emojis: ['🍎', '🍋', '🍇'] },
