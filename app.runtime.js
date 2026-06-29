@@ -2044,7 +2044,7 @@
   }
   function numberLineTitle(q) {
     const win = getNumberLineWindow(q);
-    return `Start at ${win.start}. Use \u2B05\uFE0F and \u27A1\uFE0F to count!`;
+    return `Start at ${win.start}. Use \u2212 and + to count!`;
   }
   function createJumpArc(svg, arcsGroup, fromVal, toVal, win, padX, innerWidth, lineY, arcH) {
     const x1 = tickX(fromVal, win.min, win.max, padX, innerWidth);
@@ -2085,15 +2085,15 @@
     const backBtn = document.createElement("button");
     backBtn.type = "button";
     backBtn.className = "number-line-side-btn";
-    backBtn.innerHTML = '<span aria-hidden="true">\u2B05\uFE0F</span>';
-    backBtn.setAttribute("aria-label", "Jump back one on the number line");
+    backBtn.innerHTML = '<span class="number-line-side-symbol" aria-hidden="true">\u2212</span>';
+    backBtn.setAttribute("aria-label", "Minus one on the number line");
     const svgWrap = document.createElement("div");
     svgWrap.className = "number-line-svg-wrap";
     const forwardBtn = document.createElement("button");
     forwardBtn.type = "button";
     forwardBtn.className = "number-line-side-btn";
-    forwardBtn.innerHTML = '<span aria-hidden="true">\u27A1\uFE0F</span>';
-    forwardBtn.setAttribute("aria-label", "Jump forward one on the number line");
+    forwardBtn.innerHTML = '<span class="number-line-side-symbol" aria-hidden="true">+</span>';
+    forwardBtn.setAttribute("aria-label", "Plus one on the number line");
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("class", "number-line-svg");
     svg.setAttribute("viewBox", `0 0 ${width} ${height}`);

@@ -1177,9 +1177,14 @@ body * {
   background: rgba(255,255,255,0.92);
   cursor: pointer;
   box-shadow: 0 3px 14px rgba(0,0,0,0.1);
-  font-size: clamp(38px, 11vw, 50px);
   line-height: 1;
   padding: 0;
+}
+.number-line-side-symbol {
+  font-family: 'Fredoka One', cursive;
+  font-size: clamp(40px, 11vw, 52px);
+  line-height: 1;
+  color: #222;
 }
 .number-line-side-btn:hover:not(:disabled) { transform: scale(1.05); }
 .number-line-side-btn:disabled { opacity: 0.4; cursor: not-allowed; }
