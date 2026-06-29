@@ -2154,40 +2154,32 @@
     wrap.appendChild(stage);
     root.appendChild(wrap);
     let currentPos = win.start;
-    const userSteps = [];
     const moveCurrentDot = (pos) => {
       currentDot.setAttribute("cx", String(tickX(pos, win.min, win.max, padX, innerWidth)));
-    };
-    const clearUserJumps = () => {
-      while (arcsGroup.firstChild) arcsGroup.removeChild(arcsGroup.firstChild);
-      userSteps.length = 0;
-      currentPos = win.start;
-      moveCurrentDot(currentPos);
-      endDot.setAttribute("opacity", "0");
+      endDot.setAttribute("opacity", pos === win.end ? "1" : "0");
     };
     const syncSideButtons = () => {
       const blocked = state.blocked;
-      backBtn.disabled = blocked || currentPos <= win.min || userSteps.length === 0;
+      backBtn.disabled = blocked || currentPos <= win.min;
       forwardBtn.disabled = blocked || currentPos >= win.max;
     };
     const stepForward = () => {
       if (state.blocked || currentPos >= win.max) return;
       const from = currentPos;
       const to = currentPos + 1;
-      const path = createJumpArc(svg, arcsGroup, from, to, win, padX, innerWidth, lineY, arcH);
-      userSteps.push({ from, to, path });
+      createJumpArc(svg, arcsGroup, from, to, win, padX, innerWidth, lineY, arcH);
       currentPos = to;
       moveCurrentDot(currentPos);
       syncSideButtons();
       if (state.soundOn) playSelectSound();
     };
     const stepBack = () => {
-      if (state.blocked || userSteps.length === 0) return;
-      const last = userSteps.pop();
-      last.path.remove();
-      currentPos = last.from;
+      if (state.blocked || currentPos <= win.min) return;
+      const from = currentPos;
+      const to = currentPos - 1;
+      createJumpArc(svg, arcsGroup, from, to, win, padX, innerWidth, lineY, arcH);
+      currentPos = to;
       moveCurrentDot(currentPos);
-      endDot.setAttribute("opacity", "0");
       syncSideButtons();
       if (state.soundOn) playSelectSound();
     };
