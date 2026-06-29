@@ -14,14 +14,17 @@ export function getNumberLineWindow(q, difficulty = state.mathDifficulty) {
   const pad = difficulty === 'easy' ? 2 : 1;
   let min = Math.max(0, Math.min(start, end) - pad);
   let max = Math.max(start, end) + pad;
-  const cap = NUMBER_LINE_CAPS[difficulty] ?? NUMBER_LINE_CAPS.medium;
+  const baseCap = NUMBER_LINE_CAPS[difficulty] ?? NUMBER_LINE_CAPS.medium;
+  // Ensure the visible span can always fit all required jump steps.
+  const requiredSpan = Math.abs(end - start) + (pad * 2) + 1;
+  const cap = Math.max(baseCap, requiredSpan);
   if (max - min > cap - 1) {
     if (isAdd) {
-      min = Math.max(0, start - pad);
-      max = Math.min(cap - 1, end + pad);
+      min = Math.max(0, end - cap + 1);
+      max = min + cap - 1;
     } else {
-      min = Math.max(0, end - pad);
-      max = Math.min(cap - 1, start + pad);
+      min = Math.max(0, start - cap + 1);
+      max = min + cap - 1;
     }
   }
   return { min, max, start, end, jumps, isAdd };

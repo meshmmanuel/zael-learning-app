@@ -2066,14 +2066,16 @@
     const pad = difficulty === "easy" ? 2 : 1;
     let min = Math.max(0, Math.min(start, end) - pad);
     let max = Math.max(start, end) + pad;
-    const cap = (_a = NUMBER_LINE_CAPS[difficulty]) != null ? _a : NUMBER_LINE_CAPS.medium;
+    const baseCap = (_a = NUMBER_LINE_CAPS[difficulty]) != null ? _a : NUMBER_LINE_CAPS.medium;
+    const requiredSpan = Math.abs(end - start) + pad * 2 + 1;
+    const cap = Math.max(baseCap, requiredSpan);
     if (max - min > cap - 1) {
       if (isAdd) {
-        min = Math.max(0, start - pad);
-        max = Math.min(cap - 1, end + pad);
+        min = Math.max(0, end - cap + 1);
+        max = min + cap - 1;
       } else {
-        min = Math.max(0, end - pad);
-        max = Math.min(cap - 1, start + pad);
+        min = Math.max(0, start - cap + 1);
+        max = min + cap - 1;
       }
     }
     return { min, max, start, end, jumps, isAdd };
