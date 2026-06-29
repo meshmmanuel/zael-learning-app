@@ -23,7 +23,7 @@ import { syncMeasureSetupUI, setMeasureMode } from './measurement/setup.js';
 import { startMeasureRound } from './measurement/play.js';
 import { syncBigwordsSetupUI, setBigwordsDifficulty } from './bigwords/setup.js';
 import { startBigwordsRound, nextBigword, repeatBigword } from './bigwords/play.js';
-import { syncMathSetupUI, setMathMode, setMathDifficulty, setMathHelper } from './math/setup.js';
+import { syncMathSetupUI, setMathMode, setMathDifficulty, setMathHelper, setMathQuestionCount } from './math/setup.js';
 import {
   startMathRound,
   checkAnswer,
@@ -48,6 +48,18 @@ import {
   scheduleArrowPathsRedraw,
 } from './spelling/arrow.js';
 
+const SETUP_PICK_GUARD_MS = 450;
+let lastMathSetupPickAt = 0;
+
+function wireMathSetupPick(btn, handler) {
+  if (!btn) return;
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    lastMathSetupPickAt = Date.now();
+    handler();
+  });
+}
+
 function wireInteractionGuards() {
   const root = els.app;
   if (!root) return;
@@ -71,6 +83,7 @@ export function wireApp() {
   els.pickMath.addEventListener('click', () => {
     playSelectSound();
     pickRandomBg();
+    state.activeGame = 'math';
     showScreen('mathSetup');
     syncMathSetupUI();
   });
@@ -202,24 +215,32 @@ export function wireApp() {
     els.appNavHome.addEventListener('click', () => requestGoHome());
   }
 
-  els.mathStartBtn.addEventListener('click', () => {
+  els.mathStartBtn.addEventListener('click', (e) => {
+    if (getCurrentRoute() !== 'mathSetup') return;
+    if (Date.now() - lastMathSetupPickAt < SETUP_PICK_GUARD_MS) {
+      e.preventDefault();
+      return;
+    }
     playSubmitSound();
     startMathRound();
   });
 
-  els.modeMixed.addEventListener('click', () => setMathMode('mixed'));
-  els.modeAdd.addEventListener('click', () => setMathMode('add'));
-  els.modeSub.addEventListener('click', () => setMathMode('sub'));
-  if (els.modeBeforeAfter) els.modeBeforeAfter.addEventListener('click', () => setMathMode('beforeAfter'));
-  if (els.modeBetween) els.modeBetween.addEventListener('click', () => setMathMode('between'));
-  if (els.modeLessThan) els.modeLessThan.addEventListener('click', () => setMathMode('lessThan'));
-  if (els.modeGreaterThan) els.modeGreaterThan.addEventListener('click', () => setMathMode('greaterThan'));
-  if (els.modeCompareMixed) els.modeCompareMixed.addEventListener('click', () => setMathMode('compareMixed'));
-  els.diffEasy.addEventListener('click', () => setMathDifficulty('easy'));
-  els.diffMedium.addEventListener('click', () => setMathDifficulty('medium'));
-  els.diffHard.addEventListener('click', () => setMathDifficulty('hard'));
-  if (els.mathHelperEmoji) els.mathHelperEmoji.addEventListener('click', () => setMathHelper('emoji'));
-  if (els.mathHelperNumberline) els.mathHelperNumberline.addEventListener('click', () => setMathHelper('numberline'));
+  wireMathSetupPick(els.modeMixed, () => setMathMode('mixed'));
+  wireMathSetupPick(els.modeAdd, () => setMathMode('add'));
+  wireMathSetupPick(els.modeSub, () => setMathMode('sub'));
+  wireMathSetupPick(els.modeBeforeAfter, () => setMathMode('beforeAfter'));
+  wireMathSetupPick(els.modeBetween, () => setMathMode('between'));
+  wireMathSetupPick(els.modeLessThan, () => setMathMode('lessThan'));
+  wireMathSetupPick(els.modeGreaterThan, () => setMathMode('greaterThan'));
+  wireMathSetupPick(els.modeCompareMixed, () => setMathMode('compareMixed'));
+  wireMathSetupPick(els.diffEasy, () => setMathDifficulty('easy'));
+  wireMathSetupPick(els.diffMedium, () => setMathDifficulty('medium'));
+  wireMathSetupPick(els.diffHard, () => setMathDifficulty('hard'));
+  wireMathSetupPick(els.mathCount10, () => setMathQuestionCount(10));
+  wireMathSetupPick(els.mathCount15, () => setMathQuestionCount(15));
+  wireMathSetupPick(els.mathCount20, () => setMathQuestionCount(20));
+  wireMathSetupPick(els.mathHelperEmoji, () => setMathHelper('emoji'));
+  wireMathSetupPick(els.mathHelperNumberline, () => setMathHelper('numberline'));
 
   els.submitBtn.addEventListener('click', () => {
     playSubmitSound();
@@ -292,7 +313,7 @@ export function wireApp() {
     }
 
     if (state.activeGame !== 'math') return;
-    if (els.mainScreen.style.display === 'none') return;
+    if (getCurrentRoute() !== 'play') return;
     if (isTypingTarget(e.target)) return;
     if (e.key === 'Enter') {
       if (isCompareQuestion(state.currentQ)) return;

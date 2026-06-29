@@ -56,6 +56,7 @@ export const ORDER_LAYOUT = {
 
 export const MATH_MODES_ARITH = ['mixed', 'add', 'sub'];
 export const MATH_HELPERS = ['emoji', 'numberline'];
+export const MATH_QUESTION_COUNTS = [10, 15, 20];
 
 /** Max number-line span per difficulty (Math Salamanders: within 10 / 20 / 100). */
 export const NUMBER_LINE_CAPS = {

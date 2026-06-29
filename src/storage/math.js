@@ -1,8 +1,8 @@
 import { state } from '../state.js';
-import { STORAGE, LEGACY_BEST_KEY, MATH_MODES_ALL, MATH_HELPERS } from '../config/index.js';
+import { STORAGE, LEGACY_BEST_KEY, MATH_MODES_ALL, MATH_HELPERS, MATH_QUESTION_COUNTS } from '../config/index.js';
 
 export function bestScoreStorageKey() {
-  return `kidsMathBest_${state.mathMode}_${state.mathDifficulty}`;
+  return `kidsMathBest_${state.mathMode}_${state.mathDifficulty}_${state.mathQuestionCount}`;
 }
 
 export function getBestScore() {
@@ -44,6 +44,9 @@ export function loadMathPrefs() {
     if (MATH_HELPERS.includes(data.helper)) {
       state.mathHelper = data.helper;
     }
+    if (MATH_QUESTION_COUNTS.includes(data.questionCount)) {
+      state.mathQuestionCount = data.questionCount;
+    }
   } catch {
     // ignore
   }
@@ -55,6 +58,7 @@ export function saveMathPrefs() {
       mode: state.mathMode,
       difficulty: state.mathDifficulty,
       helper: state.mathHelper,
+      questionCount: state.mathQuestionCount,
     }));
   } catch {
     // ignore

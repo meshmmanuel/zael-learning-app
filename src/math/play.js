@@ -375,7 +375,7 @@ export function loadQuestion() {
   state.addGroup2Count = 0;
   state.keyInputBuffer = '';
   state.currentQ = state.questions[state.qIndex];
-  const total = BASE_CONFIG.totalQuestions;
+  const total = state.mathQuestionCount;
   const orderQ = isOrderQuestion(state.currentQ);
   const compareQ = isCompareQuestion(state.currentQ);
   els.qLabel.textContent = `Question ${state.qIndex + 1} of ${total}`;
@@ -726,7 +726,7 @@ export function checkAnswer() {
 
 export function nextQuestion() {
   state.qIndex++;
-  if (state.qIndex >= BASE_CONFIG.totalQuestions) {
+  if (state.qIndex >= state.mathQuestionCount) {
     showEnd();
     return;
   }
@@ -736,7 +736,7 @@ export function nextQuestion() {
 export function showEnd() {
   state.activeGame = 'math';
   showScreen('end');
-  const total = BASE_CONFIG.totalQuestions;
+  const total = state.mathQuestionCount;
   const stars = starLineForScore(state.score, total);
   const msg = state.score === total ? 'PERFECT!' : state.score >= Math.ceil(total * 0.8) ? 'Amazing!' : state.score >= Math.ceil(total * 0.5) ? 'Great job!' : 'Keep going!';
   const best = Math.max(getBestScore(), state.score);

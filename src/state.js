@@ -43,6 +43,7 @@ export const state = {
   mathMode: 'mixed',
   mathDifficulty: 'medium',
   mathHelper: 'emoji',
+  mathQuestionCount: 10,
   theme: null,
   emoji: null,
   bgColor: null,

@@ -1,6 +1,5 @@
 import { state } from '../state.js';
 import {
-  BASE_CONFIG,
   DIFFICULTY_PRESETS,
   ORDER_LAYOUT,
 } from '../config/index.js';
@@ -134,7 +133,7 @@ export function genCompareQuestion(direction) {
 }
 
 export function genQuestions() {
-  const total = BASE_CONFIG.totalQuestions;
+  const total = state.mathQuestionCount;
 
   if (isCompareMode()) {
     const qs = [];
@@ -160,7 +159,7 @@ export function genQuestions() {
   if (state.mathMode === 'add') addCount = total;
   else if (state.mathMode === 'sub') subCount = total;
   else {
-    addCount = BASE_CONFIG.mixedHalf;
+    addCount = Math.floor(total / 2);
     subCount = total - addCount;
   }
 

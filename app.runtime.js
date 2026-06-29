@@ -45,6 +45,7 @@
     mathMode: "mixed",
     mathDifficulty: "medium",
     mathHelper: "emoji",
+    mathQuestionCount: 10,
     theme: null,
     emoji: null,
     bgColor: null,
@@ -190,6 +191,9 @@
     diffEasy: document.getElementById("math-diff-easy"),
     diffMedium: document.getElementById("math-diff-medium"),
     diffHard: document.getElementById("math-diff-hard"),
+    mathCount10: document.getElementById("math-count-10"),
+    mathCount15: document.getElementById("math-count-15"),
+    mathCount20: document.getElementById("math-count-20"),
     qLabel: document.getElementById("q-label"),
     progressFill: document.getElementById("progress-fill"),
     num1Val: document.getElementById("num1-val"),
@@ -265,6 +269,7 @@
   };
   var MATH_MODES_ARITH = ["mixed", "add", "sub"];
   var MATH_HELPERS = ["emoji", "numberline"];
+  var MATH_QUESTION_COUNTS = [10, 15, 20];
   var NUMBER_LINE_CAPS = {
     easy: 10,
     medium: 20,
@@ -909,7 +914,7 @@
 
   // src/storage/math.js
   function bestScoreStorageKey() {
-    return `kidsMathBest_${state.mathMode}_${state.mathDifficulty}`;
+    return `kidsMathBest_${state.mathMode}_${state.mathDifficulty}_${state.mathQuestionCount}`;
   }
   function getBestScore() {
     try {
@@ -947,6 +952,9 @@
       if (MATH_HELPERS.includes(data.helper)) {
         state.mathHelper = data.helper;
       }
+      if (MATH_QUESTION_COUNTS.includes(data.questionCount)) {
+        state.mathQuestionCount = data.questionCount;
+      }
     } catch (e) {
     }
   }
@@ -955,7 +963,8 @@
       localStorage.setItem(STORAGE.mathPrefs, JSON.stringify({
         mode: state.mathMode,
         difficulty: state.mathDifficulty,
-        helper: state.mathHelper
+        helper: state.mathHelper,
+        questionCount: state.mathQuestionCount
       }));
     } catch (e) {
     }
@@ -1741,8 +1750,15 @@
     });
     if (modeMap[state.mathMode]) modeMap[state.mathMode].setAttribute("aria-pressed", "true");
     const diffMap = { easy: els.diffEasy, medium: els.diffMedium, hard: els.diffHard };
-    Object.values(diffMap).forEach((btn) => btn.setAttribute("aria-pressed", "false"));
+    Object.values(diffMap).forEach((btn) => {
+      if (btn) btn.setAttribute("aria-pressed", "false");
+    });
     if (diffMap[state.mathDifficulty]) diffMap[state.mathDifficulty].setAttribute("aria-pressed", "true");
+    const countMap = { 10: els.mathCount10, 15: els.mathCount15, 20: els.mathCount20 };
+    Object.values(countMap).forEach((btn) => {
+      if (btn) btn.setAttribute("aria-pressed", "false");
+    });
+    if (countMap[state.mathQuestionCount]) countMap[state.mathQuestionCount].setAttribute("aria-pressed", "true");
     const helperMap = { emoji: els.mathHelperEmoji, numberline: els.mathHelperNumberline };
     Object.values(helperMap).forEach((btn) => {
       if (btn) btn.setAttribute("aria-pressed", "false");
@@ -1757,6 +1773,11 @@
   }
   function setMathDifficulty(diff) {
     state.mathDifficulty = diff;
+    syncMathSetupUI();
+    playSelectSound();
+  }
+  function setMathQuestionCount(count) {
+    state.mathQuestionCount = count;
     syncMathSetupUI();
     playSelectSound();
   }
@@ -1882,7 +1903,7 @@
     };
   }
   function genQuestions() {
-    const total = BASE_CONFIG2.totalQuestions;
+    const total = state.mathQuestionCount;
     if (isCompareMode()) {
       const qs2 = [];
       for (let i = 0; i < total; i++) {
@@ -1904,7 +1925,7 @@
     if (state.mathMode === "add") addCount = total;
     else if (state.mathMode === "sub") subCount = total;
     else {
-      addCount = BASE_CONFIG2.mixedHalf;
+      addCount = Math.floor(total / 2);
       subCount = total - addCount;
     }
     for (let i = 0; i < addCount; i++) {
@@ -2496,7 +2517,7 @@
     state.addGroup2Count = 0;
     state.keyInputBuffer = "";
     state.currentQ = state.questions[state.qIndex];
-    const total = BASE_CONFIG2.totalQuestions;
+    const total = state.mathQuestionCount;
     const orderQ = isOrderQuestion(state.currentQ);
     const compareQ = isCompareQuestion(state.currentQ);
     els.qLabel.textContent = `Question ${state.qIndex + 1} of ${total}`;
@@ -2818,7 +2839,7 @@
   }
   function nextQuestion() {
     state.qIndex++;
-    if (state.qIndex >= BASE_CONFIG2.totalQuestions) {
+    if (state.qIndex >= state.mathQuestionCount) {
       showEnd();
       return;
     }
@@ -2827,7 +2848,7 @@
   function showEnd() {
     state.activeGame = "math";
     showScreen("end");
-    const total = BASE_CONFIG2.totalQuestions;
+    const total = state.mathQuestionCount;
     const stars = starLineForScore(state.score, total);
     const msg = state.score === total ? "PERFECT!" : state.score >= Math.ceil(total * 0.8) ? "Amazing!" : state.score >= Math.ceil(total * 0.5) ? "Great job!" : "Keep going!";
     const best = Math.max(getBestScore(), state.score);
@@ -3788,6 +3809,16 @@
   }
 
   // src/bootstrap.js
+  var SETUP_PICK_GUARD_MS = 450;
+  var lastMathSetupPickAt = 0;
+  function wireMathSetupPick(btn, handler) {
+    if (!btn) return;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      lastMathSetupPickAt = Date.now();
+      handler();
+    });
+  }
   function wireInteractionGuards() {
     const root = els.app;
     if (!root) return;
@@ -3806,6 +3837,7 @@
     els.pickMath.addEventListener("click", () => {
       playSelectSound();
       pickRandomBg();
+      state.activeGame = "math";
       showScreen("mathSetup");
       syncMathSetupUI();
     });
@@ -3917,23 +3949,31 @@
     if (els.appNavHome) {
       els.appNavHome.addEventListener("click", () => requestGoHome());
     }
-    els.mathStartBtn.addEventListener("click", () => {
+    els.mathStartBtn.addEventListener("click", (e) => {
+      if (getCurrentRoute() !== "mathSetup") return;
+      if (Date.now() - lastMathSetupPickAt < SETUP_PICK_GUARD_MS) {
+        e.preventDefault();
+        return;
+      }
       playSubmitSound();
       startMathRound();
     });
-    els.modeMixed.addEventListener("click", () => setMathMode("mixed"));
-    els.modeAdd.addEventListener("click", () => setMathMode("add"));
-    els.modeSub.addEventListener("click", () => setMathMode("sub"));
-    if (els.modeBeforeAfter) els.modeBeforeAfter.addEventListener("click", () => setMathMode("beforeAfter"));
-    if (els.modeBetween) els.modeBetween.addEventListener("click", () => setMathMode("between"));
-    if (els.modeLessThan) els.modeLessThan.addEventListener("click", () => setMathMode("lessThan"));
-    if (els.modeGreaterThan) els.modeGreaterThan.addEventListener("click", () => setMathMode("greaterThan"));
-    if (els.modeCompareMixed) els.modeCompareMixed.addEventListener("click", () => setMathMode("compareMixed"));
-    els.diffEasy.addEventListener("click", () => setMathDifficulty("easy"));
-    els.diffMedium.addEventListener("click", () => setMathDifficulty("medium"));
-    els.diffHard.addEventListener("click", () => setMathDifficulty("hard"));
-    if (els.mathHelperEmoji) els.mathHelperEmoji.addEventListener("click", () => setMathHelper("emoji"));
-    if (els.mathHelperNumberline) els.mathHelperNumberline.addEventListener("click", () => setMathHelper("numberline"));
+    wireMathSetupPick(els.modeMixed, () => setMathMode("mixed"));
+    wireMathSetupPick(els.modeAdd, () => setMathMode("add"));
+    wireMathSetupPick(els.modeSub, () => setMathMode("sub"));
+    wireMathSetupPick(els.modeBeforeAfter, () => setMathMode("beforeAfter"));
+    wireMathSetupPick(els.modeBetween, () => setMathMode("between"));
+    wireMathSetupPick(els.modeLessThan, () => setMathMode("lessThan"));
+    wireMathSetupPick(els.modeGreaterThan, () => setMathMode("greaterThan"));
+    wireMathSetupPick(els.modeCompareMixed, () => setMathMode("compareMixed"));
+    wireMathSetupPick(els.diffEasy, () => setMathDifficulty("easy"));
+    wireMathSetupPick(els.diffMedium, () => setMathDifficulty("medium"));
+    wireMathSetupPick(els.diffHard, () => setMathDifficulty("hard"));
+    wireMathSetupPick(els.mathCount10, () => setMathQuestionCount(10));
+    wireMathSetupPick(els.mathCount15, () => setMathQuestionCount(15));
+    wireMathSetupPick(els.mathCount20, () => setMathQuestionCount(20));
+    wireMathSetupPick(els.mathHelperEmoji, () => setMathHelper("emoji"));
+    wireMathSetupPick(els.mathHelperNumberline, () => setMathHelper("numberline"));
     els.submitBtn.addEventListener("click", () => {
       playSubmitSound();
       checkAnswer();
@@ -3997,7 +4037,7 @@
         return;
       }
       if (state.activeGame !== "math") return;
-      if (els.mainScreen.style.display === "none") return;
+      if (getCurrentRoute() !== "play") return;
       if (isTypingTarget(e.target)) return;
       if (e.key === "Enter") {
         if (isCompareQuestion(state.currentQ)) return;
