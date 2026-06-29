@@ -2,6 +2,7 @@ import { state } from '../state.js';
 import {
   MATH_MODES_ORDER,
   MATH_MODES_COMPARE,
+  MATH_MODES_ARITH,
   ORDER_RANGES,
   COMPARE_PRESETS,
 } from '../config/index.js';
@@ -14,6 +15,14 @@ export function isOrderMode(mode = state.mathMode) {
 
 export function isCompareMode(mode = state.mathMode) {
   return MATH_MODES_COMPARE.includes(mode);
+}
+
+export function isArithMode(mode = state.mathMode) {
+  return MATH_MODES_ARITH.includes(mode);
+}
+
+export function usesNumberLineHelper() {
+  return state.mathHelper === 'numberline' && isArithMode();
 }
 
 export function isOrderQuestion(q) {

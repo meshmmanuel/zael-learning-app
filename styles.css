@@ -1155,6 +1155,45 @@ body * {
 .sub-controls { display: flex; justify-content: center; gap: 12px; margin-top: 10px; }
 .add-animal-btn { width: 54px; height: 54px; border-radius: 14px; border: 3px dashed rgba(0,0,0,0.25); background: rgba(255,255,255,0.5); font-size: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
 .add-animal-btn:hover { background: rgba(255,255,255,0.85); transform: scale(1.1); }
+
+.number-line-root { width: 100%; max-width: 100%; box-sizing: border-box; }
+.number-line-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; }
+.number-line-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 2vw, 12px);
+  width: 100%;
+}
+.number-line-side-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(58px, 15vw, 76px);
+  height: clamp(58px, 15vw, 76px);
+  border: none;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.92);
+  cursor: pointer;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.1);
+  font-size: clamp(38px, 11vw, 50px);
+  line-height: 1;
+  padding: 0;
+}
+.number-line-side-btn:hover:not(:disabled) { transform: scale(1.05); }
+.number-line-side-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.number-line-side-btn:focus-visible {
+  outline: 3px solid rgba(0,0,0,0.45);
+  outline-offset: 3px;
+}
+.number-line-svg-wrap { flex: 1 1 auto; min-width: 0; max-width: min(360px, 100%); }
+.number-line-svg { width: 100%; height: auto; display: block; }
+.number-line-axis { stroke: #222; stroke-width: 2.5; stroke-linecap: round; }
+.number-line-tick { stroke: #333; stroke-width: 2; }
+.number-line-label { font-family: 'Fredoka One', cursive; font-size: 14px; fill: #222; }
+.number-line-jump { stroke-linecap: round; }
+
 .sub-hint { font-size: 13px; font-weight: 800; color: rgba(0,0,0,0.5); text-align: center; margin-top: 10px; }
 
 /* Addition “two groups + plus” breaks horizontally on many widths; #app hides overflow-x so it looked clipped. */

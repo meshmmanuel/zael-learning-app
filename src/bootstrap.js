@@ -23,15 +23,16 @@ import { syncMeasureSetupUI, setMeasureMode } from './measurement/setup.js';
 import { startMeasureRound } from './measurement/play.js';
 import { syncBigwordsSetupUI, setBigwordsDifficulty } from './bigwords/setup.js';
 import { startBigwordsRound, nextBigword, repeatBigword } from './bigwords/play.js';
-import { syncMathSetupUI, setMathMode, setMathDifficulty } from './math/setup.js';
+import { syncMathSetupUI, setMathMode, setMathDifficulty, setMathHelper } from './math/setup.js';
 import {
   startMathRound,
   checkAnswer,
   selectNumber,
   updateAdditionZone,
   updateSubtractionZone,
+  buildMathHelperZone,
 } from './math/play.js';
-import { isOrderQuestion, isCompareQuestion } from './utils/index.js';
+import { isOrderQuestion, isCompareQuestion, usesNumberLineHelper } from './utils/index.js';
 import {
   syncSpellingSetupUI,
   setSpellingMode,
@@ -217,6 +218,8 @@ export function wireApp() {
   els.diffEasy.addEventListener('click', () => setMathDifficulty('easy'));
   els.diffMedium.addEventListener('click', () => setMathDifficulty('medium'));
   els.diffHard.addEventListener('click', () => setMathDifficulty('hard'));
+  if (els.mathHelperEmoji) els.mathHelperEmoji.addEventListener('click', () => setMathHelper('emoji'));
+  if (els.mathHelperNumberline) els.mathHelperNumberline.addEventListener('click', () => setMathHelper('numberline'));
 
   els.submitBtn.addEventListener('click', () => {
     playSubmitSound();
@@ -264,7 +267,8 @@ export function wireApp() {
     updateHintToggle();
     if (state.soundOn) playToggleSound();
     if (state.currentQ && !isOrderQuestion(state.currentQ) && !isCompareQuestion(state.currentQ)) {
-      if (state.currentQ.type === 'add') updateAdditionZone();
+      if (usesNumberLineHelper()) buildMathHelperZone();
+      else if (state.currentQ.type === 'add') updateAdditionZone();
       else updateSubtractionZone();
     }
   });

@@ -42,6 +42,7 @@ export const state = {
   bigwordsListenPlaying: false,
   mathMode: 'mixed',
   mathDifficulty: 'medium',
+  mathHelper: 'emoji',
   theme: null,
   emoji: null,
   bgColor: null,

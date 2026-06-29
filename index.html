@@ -59,6 +59,14 @@
       </div>
     </fieldset>
 
+    <fieldset class="setup-fieldset" id="math-helper-fieldset">
+      <legend class="setup-legend">How to count</legend>
+      <div class="pick-row" role="group" aria-label="Counting helper">
+        <button type="button" class="pick-btn" id="math-helper-emoji" aria-pressed="true">Emojis 🐸</button>
+        <button type="button" class="pick-btn" id="math-helper-numberline" aria-pressed="false">Number line 📏</button>
+      </div>
+    </fieldset>
+
     <fieldset class="setup-fieldset">
       <legend class="setup-legend">Number order</legend>
       <div class="pick-row" role="group" aria-label="Number order practice">
@@ -331,6 +339,7 @@
       <div class="emoji-zone" id="emoji-zone">
         <div class="emoji-zone-title" id="emoji-zone-title">Count them all!</div>
         <div id="emoji-content"></div>
+        <div id="number-line-root" class="number-line-root" hidden></div>
         <div class="sub-hint" id="sub-hint" style="display:none"></div>
       </div>
       <div class="answer-section" id="math-answer-section">

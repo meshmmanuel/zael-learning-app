@@ -1,5 +1,5 @@
 import { state } from '../state.js';
-import { STORAGE, LEGACY_BEST_KEY, MATH_MODES_ALL } from '../config/index.js';
+import { STORAGE, LEGACY_BEST_KEY, MATH_MODES_ALL, MATH_HELPERS } from '../config/index.js';
 
 export function bestScoreStorageKey() {
   return `kidsMathBest_${state.mathMode}_${state.mathDifficulty}`;
@@ -41,6 +41,9 @@ export function loadMathPrefs() {
     if (data.difficulty === 'easy' || data.difficulty === 'medium' || data.difficulty === 'hard') {
       state.mathDifficulty = data.difficulty;
     }
+    if (MATH_HELPERS.includes(data.helper)) {
+      state.mathHelper = data.helper;
+    }
   } catch {
     // ignore
   }
@@ -48,7 +51,11 @@ export function loadMathPrefs() {
 
 export function saveMathPrefs() {
   try {
-    localStorage.setItem(STORAGE.mathPrefs, JSON.stringify({ mode: state.mathMode, difficulty: state.mathDifficulty }));
+    localStorage.setItem(STORAGE.mathPrefs, JSON.stringify({
+      mode: state.mathMode,
+      difficulty: state.mathDifficulty,
+      helper: state.mathHelper,
+    }));
   } catch {
     // ignore
   }

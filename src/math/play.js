@@ -17,8 +17,9 @@ import {
   createHintStick,
   createHintHundred,
 } from './compare-visual.js';
+import { renderNumberLine, hideNumberLine, numberLineTitle, cancelNumberLineAnimation } from './number-line.js';
 import { saveMathPrefs, getBestScore, setBestScore } from '../storage/math.js';
-import { isOrderMode, isOrderQuestion, isCompareMode, isCompareQuestion, shuffle, starLineForScore } from '../utils/index.js';
+import { isOrderMode, isOrderQuestion, isCompareMode, isCompareQuestion, shuffle, starLineForScore, usesNumberLineHelper } from '../utils/index.js';
 import {
   playCelebrationSound,
   playWrongSound,
@@ -66,7 +67,10 @@ export function startMathRound() {
     compareTotal: 0,
   };
   const hideHelpers = orderRound || compareRound;
-  if (els.hintToggle) els.hintToggle.style.display = hideHelpers ? 'none' : '';
+  const numberLineRound = usesNumberLineHelper() && !hideHelpers;
+  if (els.hintToggle) {
+    els.hintToggle.style.display = hideHelpers || numberLineRound ? 'none' : '';
+  }
   if (els.emojiZone) els.emojiZone.style.display = hideHelpers ? 'none' : '';
   syncMathAnswerSection(compareRound);
   showScreen('play');
@@ -360,6 +364,7 @@ export function renderArithmeticQuestion() {
 }
 
 export function loadQuestion() {
+  cancelNumberLineAnimation();
   state.blocked = false;
   state.selectedAnswer = null;
   state.orderAnswers = {};
@@ -388,9 +393,10 @@ export function loadQuestion() {
   if (!compareQ) buildNumberPicker();
   if (compareQ || orderQ) {
     if (els.emojiZone) els.emojiZone.style.display = 'none';
+    hideNumberLine(els.numberLineRoot);
   } else {
     if (els.emojiZone) els.emojiZone.style.display = '';
-    buildEmojiZone();
+    buildMathHelperZone();
   }
   updateSubmitState();
 }
@@ -453,6 +459,20 @@ export function selectNumber(n, btn) {
   btn.setAttribute('aria-pressed', 'true');
   updateSubmitState();
   playSelectSound();
+}
+
+export function buildMathHelperZone() {
+  const q = state.currentQ;
+  const useLine = usesNumberLineHelper();
+  if (useLine) {
+    if (els.emojiContent) els.emojiContent.innerHTML = '';
+    if (els.emojiZoneTitle) els.emojiZoneTitle.textContent = numberLineTitle(q);
+    if (els.subHint) els.subHint.style.display = 'none';
+    renderNumberLine(els.numberLineRoot, q);
+    return;
+  }
+  hideNumberLine(els.numberLineRoot);
+  buildEmojiZone();
 }
 
 export function buildEmojiZone() {
@@ -750,7 +770,7 @@ export function showEnd() {
     pickRandomBg();
     showScreen('mathSetup');
     syncMathSetupUI();
-    if (els.hintToggle) els.hintToggle.style.display = '';
+    if (els.hintToggle) els.hintToggle.style.display = usesNumberLineHelper() ? 'none' : '';
     if (els.emojiZone) els.emojiZone.style.display = '';
     syncMathAnswerSection(false);
   };

@@ -44,6 +44,7 @@
     bigwordsListenPlaying: false,
     mathMode: "mixed",
     mathDifficulty: "medium",
+    mathHelper: "emoji",
     theme: null,
     emoji: null,
     bgColor: null,
@@ -172,6 +173,9 @@
     modeLessThan: document.getElementById("math-mode-less-than"),
     modeGreaterThan: document.getElementById("math-mode-greater-than"),
     modeCompareMixed: document.getElementById("math-mode-compare-mixed"),
+    mathHelperFieldset: document.getElementById("math-helper-fieldset"),
+    mathHelperEmoji: document.getElementById("math-helper-emoji"),
+    mathHelperNumberline: document.getElementById("math-helper-numberline"),
     mathDisplay: document.getElementById("math-display"),
     mathArithmeticView: document.getElementById("math-arithmetic-view"),
     mathOrderView: document.getElementById("math-order-view"),
@@ -197,6 +201,7 @@
     mathAnswerLabel: document.getElementById("math-answer-label"),
     numberPicker: document.getElementById("number-picker"),
     emojiContent: document.getElementById("emoji-content"),
+    numberLineRoot: document.getElementById("number-line-root"),
     emojiZoneTitle: document.getElementById("emoji-zone-title"),
     subHint: document.getElementById("sub-hint"),
     submitBtn: document.getElementById("submit-btn"),
@@ -259,6 +264,12 @@
     }
   };
   var MATH_MODES_ARITH = ["mixed", "add", "sub"];
+  var MATH_HELPERS = ["emoji", "numberline"];
+  var NUMBER_LINE_CAPS = {
+    easy: 10,
+    medium: 20,
+    hard: 100
+  };
   var MATH_MODES_ORDER = ["beforeAfter", "between"];
   var MATH_MODES_COMPARE = ["lessThan", "greaterThan", "compareMixed"];
   var COMPARE_PRESETS = {
@@ -933,12 +944,19 @@
       if (data.difficulty === "easy" || data.difficulty === "medium" || data.difficulty === "hard") {
         state.mathDifficulty = data.difficulty;
       }
+      if (MATH_HELPERS.includes(data.helper)) {
+        state.mathHelper = data.helper;
+      }
     } catch (e) {
     }
   }
   function saveMathPrefs() {
     try {
-      localStorage.setItem(STORAGE.mathPrefs, JSON.stringify({ mode: state.mathMode, difficulty: state.mathDifficulty }));
+      localStorage.setItem(STORAGE.mathPrefs, JSON.stringify({
+        mode: state.mathMode,
+        difficulty: state.mathDifficulty,
+        helper: state.mathHelper
+      }));
     } catch (e) {
     }
   }
@@ -1197,6 +1215,12 @@
   }
   function isCompareMode(mode = state.mathMode) {
     return MATH_MODES_COMPARE.includes(mode);
+  }
+  function isArithMode(mode = state.mathMode) {
+    return MATH_MODES_ARITH.includes(mode);
+  }
+  function usesNumberLineHelper() {
+    return state.mathHelper === "numberline" && isArithMode();
   }
   function isOrderQuestion(q) {
     return q && (q.type === "beforeAfter" || q.type === "between");
@@ -1697,6 +1721,10 @@
   }
 
   // src/math/setup.js
+  function syncMathHelperFieldset() {
+    const show = isArithMode();
+    if (els.mathHelperFieldset) els.mathHelperFieldset.hidden = !show;
+  }
   function syncMathSetupUI() {
     const modeMap = {
       mixed: els.modeMixed,
@@ -1715,6 +1743,12 @@
     const diffMap = { easy: els.diffEasy, medium: els.diffMedium, hard: els.diffHard };
     Object.values(diffMap).forEach((btn) => btn.setAttribute("aria-pressed", "false"));
     if (diffMap[state.mathDifficulty]) diffMap[state.mathDifficulty].setAttribute("aria-pressed", "true");
+    const helperMap = { emoji: els.mathHelperEmoji, numberline: els.mathHelperNumberline };
+    Object.values(helperMap).forEach((btn) => {
+      if (btn) btn.setAttribute("aria-pressed", "false");
+    });
+    if (helperMap[state.mathHelper]) helperMap[state.mathHelper].setAttribute("aria-pressed", "true");
+    syncMathHelperFieldset();
   }
   function setMathMode(mode) {
     state.mathMode = mode;
@@ -1723,6 +1757,11 @@
   }
   function setMathDifficulty(diff) {
     state.mathDifficulty = diff;
+    syncMathSetupUI();
+    playSelectSound();
+  }
+  function setMathHelper(helper) {
+    state.mathHelper = helper;
     syncMathSetupUI();
     playSelectSound();
   }
@@ -1967,6 +2006,203 @@
     return createHundredEl();
   }
 
+  // src/math/number-line.js
+  function cancelNumberLineAnimation() {
+  }
+  function getNumberLineWindow(q, difficulty = state.mathDifficulty) {
+    var _a;
+    const isAdd = q.type === "add";
+    const start = q.a;
+    const jumps = q.b;
+    const end = isAdd ? start + jumps : start - jumps;
+    const pad = difficulty === "easy" ? 2 : 1;
+    let min = Math.max(0, Math.min(start, end) - pad);
+    let max = Math.max(start, end) + pad;
+    const cap = (_a = NUMBER_LINE_CAPS[difficulty]) != null ? _a : NUMBER_LINE_CAPS.medium;
+    if (max - min > cap - 1) {
+      if (isAdd) {
+        min = Math.max(0, start - pad);
+        max = Math.min(cap - 1, end + pad);
+      } else {
+        min = Math.max(0, end - pad);
+        max = Math.min(cap - 1, start + pad);
+      }
+    }
+    return { min, max, start, end, jumps, isAdd };
+  }
+  function tickX(value, min, max, padX, innerWidth) {
+    if (max === min) return padX + innerWidth / 2;
+    return padX + (value - min) / (max - min) * innerWidth;
+  }
+  function arcPath(x1, x2, y, height) {
+    const mid = (x1 + x2) / 2;
+    return `M ${x1} ${y} Q ${mid} ${y - height} ${x2} ${y}`;
+  }
+  function describeJumps(win) {
+    const dir = win.isAdd ? "forward" : "back";
+    return `Start at ${win.start}, jump ${dir} ${win.jumps} time${win.jumps === 1 ? "" : "s"}, land on ${win.end}`;
+  }
+  function numberLineTitle(q) {
+    const win = getNumberLineWindow(q);
+    return `Start at ${win.start}. Use \u2B05\uFE0F and \u27A1\uFE0F to count!`;
+  }
+  function createJumpArc(svg, arcsGroup, fromVal, toVal, win, padX, innerWidth, lineY, arcH) {
+    const x1 = tickX(fromVal, win.min, win.max, padX, innerWidth);
+    const x2 = tickX(toVal, win.min, win.max, padX, innerWidth);
+    const goingForward = toVal > fromVal;
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("class", "number-line-jump");
+    path.setAttribute("d", arcPath(x1, x2, lineY, arcH));
+    path.setAttribute("stroke", goingForward ? "#2563eb" : "#dc2626");
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke-width", "2.5");
+    path.setAttribute("stroke-dasharray", "6 4");
+    arcsGroup.appendChild(path);
+    return path;
+  }
+  function renderNumberLine(root, q) {
+    if (!root || !q) return;
+    cancelNumberLineAnimation();
+    const win = getNumberLineWindow(q);
+    const padX = 28;
+    const width = 320;
+    const height = 120;
+    const lineY = 72;
+    const arcH = 22;
+    const startColor = "#dc2626";
+    const currentColor = "#2563eb";
+    const innerWidth = width - padX * 2;
+    const values = [];
+    for (let n = win.min; n <= win.max; n++) values.push(n);
+    root.innerHTML = "";
+    root.hidden = false;
+    root.setAttribute("role", "group");
+    root.setAttribute("aria-label", describeJumps(win));
+    const wrap = document.createElement("div");
+    wrap.className = "number-line-wrap";
+    const stage = document.createElement("div");
+    stage.className = "number-line-stage";
+    const backBtn = document.createElement("button");
+    backBtn.type = "button";
+    backBtn.className = "number-line-side-btn";
+    backBtn.innerHTML = '<span aria-hidden="true">\u2B05\uFE0F</span>';
+    backBtn.setAttribute("aria-label", "Jump back one on the number line");
+    const svgWrap = document.createElement("div");
+    svgWrap.className = "number-line-svg-wrap";
+    const forwardBtn = document.createElement("button");
+    forwardBtn.type = "button";
+    forwardBtn.className = "number-line-side-btn";
+    forwardBtn.innerHTML = '<span aria-hidden="true">\u27A1\uFE0F</span>';
+    forwardBtn.setAttribute("aria-label", "Jump forward one on the number line");
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "number-line-svg");
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    svg.setAttribute("aria-hidden", "true");
+    const axis = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    axis.setAttribute("class", "number-line-axis");
+    axis.setAttribute("x1", String(padX - 8));
+    axis.setAttribute("y1", String(lineY));
+    axis.setAttribute("x2", String(width - padX + 8));
+    axis.setAttribute("y2", String(lineY));
+    svg.appendChild(axis);
+    values.forEach((n) => {
+      const x = tickX(n, win.min, win.max, padX, innerWidth);
+      const tick = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      tick.setAttribute("class", "number-line-tick");
+      tick.setAttribute("x1", String(x));
+      tick.setAttribute("y1", String(lineY - 6));
+      tick.setAttribute("x2", String(x));
+      tick.setAttribute("y2", String(lineY + 6));
+      svg.appendChild(tick);
+      const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      label.setAttribute("class", "number-line-label");
+      label.setAttribute("x", String(x));
+      label.setAttribute("y", String(lineY + 24));
+      label.setAttribute("text-anchor", "middle");
+      label.textContent = String(n);
+      svg.appendChild(label);
+    });
+    const arcsGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    arcsGroup.setAttribute("class", "number-line-arcs");
+    svg.appendChild(arcsGroup);
+    const startDot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    startDot.setAttribute("class", "number-line-dot number-line-dot--start");
+    startDot.setAttribute("cx", String(tickX(win.start, win.min, win.max, padX, innerWidth)));
+    startDot.setAttribute("cy", String(lineY));
+    startDot.setAttribute("r", "5");
+    startDot.setAttribute("fill", startColor);
+    svg.appendChild(startDot);
+    const currentDot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    currentDot.setAttribute("class", "number-line-dot number-line-dot--current");
+    currentDot.setAttribute("cx", String(tickX(win.start, win.min, win.max, padX, innerWidth)));
+    currentDot.setAttribute("cy", String(lineY));
+    currentDot.setAttribute("r", "6");
+    currentDot.setAttribute("fill", currentColor);
+    svg.appendChild(currentDot);
+    const endDot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    endDot.setAttribute("class", "number-line-dot number-line-dot--end");
+    endDot.setAttribute("cx", String(tickX(win.end, win.min, win.max, padX, innerWidth)));
+    endDot.setAttribute("cy", String(lineY));
+    endDot.setAttribute("r", "5");
+    endDot.setAttribute("fill", currentColor);
+    endDot.setAttribute("opacity", "0");
+    svg.appendChild(endDot);
+    svgWrap.appendChild(svg);
+    stage.appendChild(backBtn);
+    stage.appendChild(svgWrap);
+    stage.appendChild(forwardBtn);
+    wrap.appendChild(stage);
+    root.appendChild(wrap);
+    let currentPos = win.start;
+    const userSteps = [];
+    const moveCurrentDot = (pos) => {
+      currentDot.setAttribute("cx", String(tickX(pos, win.min, win.max, padX, innerWidth)));
+    };
+    const clearUserJumps = () => {
+      while (arcsGroup.firstChild) arcsGroup.removeChild(arcsGroup.firstChild);
+      userSteps.length = 0;
+      currentPos = win.start;
+      moveCurrentDot(currentPos);
+      endDot.setAttribute("opacity", "0");
+    };
+    const syncSideButtons = () => {
+      const blocked = state.blocked;
+      backBtn.disabled = blocked || currentPos <= win.min || userSteps.length === 0;
+      forwardBtn.disabled = blocked || currentPos >= win.max;
+    };
+    const stepForward = () => {
+      if (state.blocked || currentPos >= win.max) return;
+      const from = currentPos;
+      const to = currentPos + 1;
+      const path = createJumpArc(svg, arcsGroup, from, to, win, padX, innerWidth, lineY, arcH);
+      userSteps.push({ from, to, path });
+      currentPos = to;
+      moveCurrentDot(currentPos);
+      syncSideButtons();
+      if (state.soundOn) playSelectSound();
+    };
+    const stepBack = () => {
+      if (state.blocked || userSteps.length === 0) return;
+      const last = userSteps.pop();
+      last.path.remove();
+      currentPos = last.from;
+      moveCurrentDot(currentPos);
+      endDot.setAttribute("opacity", "0");
+      syncSideButtons();
+      if (state.soundOn) playSelectSound();
+    };
+    forwardBtn.onclick = stepForward;
+    backBtn.onclick = stepBack;
+    syncSideButtons();
+  }
+  function hideNumberLine(root) {
+    cancelNumberLineAnimation();
+    if (!root) return;
+    root.hidden = true;
+    root.innerHTML = "";
+    root.removeAttribute("aria-label");
+  }
+
   // src/math/play.js
   function syncMathAnswerSection(compareRound = isCompareMode()) {
     const hidePicker = compareRound;
@@ -2002,7 +2238,10 @@
       compareTotal: 0
     };
     const hideHelpers = orderRound || compareRound;
-    if (els.hintToggle) els.hintToggle.style.display = hideHelpers ? "none" : "";
+    const numberLineRound = usesNumberLineHelper() && !hideHelpers;
+    if (els.hintToggle) {
+      els.hintToggle.style.display = hideHelpers || numberLineRound ? "none" : "";
+    }
     if (els.emojiZone) els.emojiZone.style.display = hideHelpers ? "none" : "";
     syncMathAnswerSection(compareRound);
     showScreen("play");
@@ -2254,6 +2493,7 @@
     els.num2Val.textContent = state.currentQ.b;
   }
   function loadQuestion() {
+    cancelNumberLineAnimation();
     state.blocked = false;
     state.selectedAnswer = null;
     state.orderAnswers = {};
@@ -2282,9 +2522,10 @@
     if (!compareQ) buildNumberPicker();
     if (compareQ || orderQ) {
       if (els.emojiZone) els.emojiZone.style.display = "none";
+      hideNumberLine(els.numberLineRoot);
     } else {
       if (els.emojiZone) els.emojiZone.style.display = "";
-      buildEmojiZone();
+      buildMathHelperZone();
     }
     updateSubmitState();
   }
@@ -2340,6 +2581,19 @@
     btn.setAttribute("aria-pressed", "true");
     updateSubmitState();
     playSelectSound();
+  }
+  function buildMathHelperZone() {
+    const q = state.currentQ;
+    const useLine = usesNumberLineHelper();
+    if (useLine) {
+      if (els.emojiContent) els.emojiContent.innerHTML = "";
+      if (els.emojiZoneTitle) els.emojiZoneTitle.textContent = numberLineTitle(q);
+      if (els.subHint) els.subHint.style.display = "none";
+      renderNumberLine(els.numberLineRoot, q);
+      return;
+    }
+    hideNumberLine(els.numberLineRoot);
+    buildEmojiZone();
   }
   function buildEmojiZone() {
     els.emojiContent.innerHTML = "";
@@ -2609,7 +2863,7 @@
       pickRandomBg();
       showScreen("mathSetup");
       syncMathSetupUI();
-      if (els.hintToggle) els.hintToggle.style.display = "";
+      if (els.hintToggle) els.hintToggle.style.display = usesNumberLineHelper() ? "none" : "";
       if (els.emojiZone) els.emojiZone.style.display = "";
       syncMathAnswerSection(false);
     };
@@ -3686,6 +3940,8 @@
     els.diffEasy.addEventListener("click", () => setMathDifficulty("easy"));
     els.diffMedium.addEventListener("click", () => setMathDifficulty("medium"));
     els.diffHard.addEventListener("click", () => setMathDifficulty("hard"));
+    if (els.mathHelperEmoji) els.mathHelperEmoji.addEventListener("click", () => setMathHelper("emoji"));
+    if (els.mathHelperNumberline) els.mathHelperNumberline.addEventListener("click", () => setMathHelper("numberline"));
     els.submitBtn.addEventListener("click", () => {
       playSubmitSound();
       checkAnswer();
@@ -3726,7 +3982,8 @@
       updateHintToggle();
       if (state.soundOn) playToggleSound2();
       if (state.currentQ && !isOrderQuestion(state.currentQ) && !isCompareQuestion(state.currentQ)) {
-        if (state.currentQ.type === "add") updateAdditionZone();
+        if (usesNumberLineHelper()) buildMathHelperZone();
+        else if (state.currentQ.type === "add") updateAdditionZone();
         else updateSubtractionZone();
       }
     });

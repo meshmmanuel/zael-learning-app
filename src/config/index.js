@@ -55,6 +55,14 @@ export const ORDER_LAYOUT = {
 };
 
 export const MATH_MODES_ARITH = ['mixed', 'add', 'sub'];
+export const MATH_HELPERS = ['emoji', 'numberline'];
+
+/** Max number-line span per difficulty (Math Salamanders: within 10 / 20 / 100). */
+export const NUMBER_LINE_CAPS = {
+  easy: 10,
+  medium: 20,
+  hard: 100,
+};
 export const MATH_MODES_ORDER = ['beforeAfter', 'between'];
 export const MATH_MODES_COMPARE = ['lessThan', 'greaterThan', 'compareMixed'];
 
