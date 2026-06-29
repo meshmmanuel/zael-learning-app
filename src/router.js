@@ -7,6 +7,7 @@ import { cancelSpeech } from './audio/index.js';
 export const NAV_TITLE = {
   home: 'Kids Learning Playground',
   mathSetup: 'Numbers — Set up',
+  mathHelper: 'Numbers — Homework helper',
   spellingSetup: 'Spelling — Set up',
   play: 'Numbers — Practice',
   phonicsPlay: 'Letter sounds',
@@ -138,6 +139,7 @@ export function showScreen(name) {
   const screens = {
     home: els.homeScreen,
     mathSetup: els.mathSetupScreen,
+    mathHelper: els.mathHelperScreen,
     spellingSetup: els.spellingSetupScreen,
     spellingPlay: els.spellingPlayScreen,
     phonicsPlay: els.phonicsPlayScreen,
@@ -156,6 +158,8 @@ export function showScreen(name) {
     screens.home.style.display = 'flex';
   } else if (name === 'mathSetup') {
     screens.mathSetup.style.display = 'flex';
+  } else if (name === 'mathHelper') {
+    if (screens.mathHelper) screens.mathHelper.style.display = 'flex';
   } else if (name === 'spellingSetup') {
     screens.spellingSetup.style.display = 'flex';
   } else if (name === 'spellingPlay') {

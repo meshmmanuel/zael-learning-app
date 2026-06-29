@@ -32,6 +32,13 @@ import {
   updateSubtractionZone,
   buildMathHelperZone,
 } from './math/play.js';
+import {
+  syncMathHomeworkUI,
+  setMathHomeworkOp,
+  renderMathHomeworkLine,
+  clearMathHomeworkLine,
+  adjustMathHomeworkValue,
+} from './math/helper.js';
 import { isOrderQuestion, isCompareQuestion, usesNumberLineHelper } from './utils/index.js';
 import {
   syncSpellingSetupUI,
@@ -211,6 +218,37 @@ export function wireApp() {
     requestGoHome();
   });
 
+  if (els.mathHomeworkBtn) {
+    els.mathHomeworkBtn.addEventListener('click', () => {
+      playSelectSound();
+      clearMathHomeworkLine();
+      syncMathHomeworkUI();
+      showScreen('mathHelper');
+    });
+  }
+
+  if (els.homeworkBackBtn) {
+    els.homeworkBackBtn.addEventListener('click', () => {
+      playToggleSound();
+      clearMathHomeworkLine();
+      showScreen('mathSetup');
+      syncMathSetupUI();
+    });
+  }
+
+  if (els.homeworkOpAdd) els.homeworkOpAdd.addEventListener('click', () => setMathHomeworkOp('add'));
+  if (els.homeworkOpSub) els.homeworkOpSub.addEventListener('click', () => setMathHomeworkOp('sub'));
+  if (els.homeworkAMinus10) els.homeworkAMinus10.addEventListener('click', () => adjustMathHomeworkValue('a', -10));
+  if (els.homeworkAMinus1) els.homeworkAMinus1.addEventListener('click', () => adjustMathHomeworkValue('a', -1));
+  if (els.homeworkAPlus1) els.homeworkAPlus1.addEventListener('click', () => adjustMathHomeworkValue('a', 1));
+  if (els.homeworkAPlus10) els.homeworkAPlus10.addEventListener('click', () => adjustMathHomeworkValue('a', 10));
+  if (els.homeworkBMinus10) els.homeworkBMinus10.addEventListener('click', () => adjustMathHomeworkValue('b', -10));
+  if (els.homeworkBMinus1) els.homeworkBMinus1.addEventListener('click', () => adjustMathHomeworkValue('b', -1));
+  if (els.homeworkBPlus1) els.homeworkBPlus1.addEventListener('click', () => adjustMathHomeworkValue('b', 1));
+  if (els.homeworkBPlus10) els.homeworkBPlus10.addEventListener('click', () => adjustMathHomeworkValue('b', 10));
+  if (els.homeworkOpenBtn) els.homeworkOpenBtn.addEventListener('click', () => renderMathHomeworkLine());
+  if (els.homeworkClearBtn) els.homeworkClearBtn.addEventListener('click', () => clearMathHomeworkLine());
+
   if (els.appNavHome) {
     els.appNavHome.addEventListener('click', () => requestGoHome());
   }
@@ -358,6 +396,7 @@ export function initApp() {
   loadMeasurePrefs();
   loadBigwordsPrefs();
   syncMathSetupUI();
+  syncMathHomeworkUI();
   syncSpellingSetupUI();
   syncMeasureSetupUI();
   syncBigwordsSetupUI();

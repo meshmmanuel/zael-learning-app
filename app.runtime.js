@@ -46,6 +46,9 @@
     mathDifficulty: "medium",
     mathHelper: "emoji",
     mathQuestionCount: 10,
+    mathHomeworkOp: "sub",
+    mathHomeworkA: 8,
+    mathHomeworkB: 5,
     theme: null,
     emoji: null,
     bgColor: null,
@@ -84,6 +87,7 @@
     appModalConfirm: document.getElementById("app-modal-confirm"),
     homeScreen: document.getElementById("home-screen"),
     mathSetupScreen: document.getElementById("math-setup-screen"),
+    mathHelperScreen: document.getElementById("math-helper-screen"),
     spellingSetupScreen: document.getElementById("spelling-setup-screen"),
     spellingPlayScreen: document.getElementById("spelling-play-screen"),
     phonicsPlayScreen: document.getElementById("phonics-play-screen"),
@@ -165,7 +169,26 @@
     spellingSoundToggle: document.getElementById("spelling-sound-toggle"),
     spellingHearWordBtn: document.getElementById("spelling-hear-word-btn"),
     mathBackBtn: document.getElementById("math-back-btn"),
+    mathHomeworkBtn: document.getElementById("math-homework-btn"),
     mathStartBtn: document.getElementById("math-start-btn"),
+    homeworkBackBtn: document.getElementById("homework-back-btn"),
+    homeworkNumA: document.getElementById("homework-num-a"),
+    homeworkNumB: document.getElementById("homework-num-b"),
+    homeworkAMinus10: document.getElementById("homework-a-minus-10"),
+    homeworkAMinus1: document.getElementById("homework-a-minus-1"),
+    homeworkAPlus1: document.getElementById("homework-a-plus-1"),
+    homeworkAPlus10: document.getElementById("homework-a-plus-10"),
+    homeworkBMinus10: document.getElementById("homework-b-minus-10"),
+    homeworkBMinus1: document.getElementById("homework-b-minus-1"),
+    homeworkBPlus1: document.getElementById("homework-b-plus-1"),
+    homeworkBPlus10: document.getElementById("homework-b-plus-10"),
+    homeworkOpAdd: document.getElementById("homework-op-add"),
+    homeworkOpSub: document.getElementById("homework-op-sub"),
+    homeworkOpenBtn: document.getElementById("homework-open-btn"),
+    homeworkClearBtn: document.getElementById("homework-clear-btn"),
+    homeworkLineTitle: document.getElementById("homework-line-title"),
+    homeworkLineFeedback: document.getElementById("homework-line-feedback"),
+    homeworkNumberLineRoot: document.getElementById("homework-number-line-root"),
     modeMixed: document.getElementById("math-mode-mixed"),
     modeAdd: document.getElementById("math-mode-add"),
     modeSub: document.getElementById("math-mode-sub"),
@@ -728,6 +751,7 @@
   var NAV_TITLE = {
     home: "Kids Learning Playground",
     mathSetup: "Numbers \u2014 Set up",
+    mathHelper: "Numbers \u2014 Homework helper",
     spellingSetup: "Spelling \u2014 Set up",
     play: "Numbers \u2014 Practice",
     phonicsPlay: "Letter sounds",
@@ -843,6 +867,7 @@
     const screens = {
       home: els.homeScreen,
       mathSetup: els.mathSetupScreen,
+      mathHelper: els.mathHelperScreen,
       spellingSetup: els.spellingSetupScreen,
       spellingPlay: els.spellingPlayScreen,
       phonicsPlay: els.phonicsPlayScreen,
@@ -861,6 +886,8 @@
       screens.home.style.display = "flex";
     } else if (name === "mathSetup") {
       screens.mathSetup.style.display = "flex";
+    } else if (name === "mathHelper") {
+      if (screens.mathHelper) screens.mathHelper.style.display = "flex";
     } else if (name === "spellingSetup") {
       screens.spellingSetup.style.display = "flex";
     } else if (name === "spellingPlay") {
@@ -2895,6 +2922,63 @@
     if (els.submitBtn) els.submitBtn.disabled = state.blocked || !ready || compareQ;
   }
 
+  // src/math/helper.js
+  function safeHomeworkNumber(value) {
+    if (!Number.isFinite(value)) return 0;
+    return Math.max(0, Math.min(999, Math.trunc(value)));
+  }
+  function setMathHomeworkOp(op) {
+    state.mathHomeworkOp = op === "add" ? "add" : "sub";
+    syncMathHomeworkUI();
+  }
+  function syncMathHomeworkUI() {
+    state.mathHomeworkA = safeHomeworkNumber(state.mathHomeworkA);
+    state.mathHomeworkB = safeHomeworkNumber(state.mathHomeworkB);
+    if (els.homeworkOpAdd) {
+      els.homeworkOpAdd.setAttribute("aria-pressed", state.mathHomeworkOp === "add" ? "true" : "false");
+    }
+    if (els.homeworkOpSub) {
+      els.homeworkOpSub.setAttribute("aria-pressed", state.mathHomeworkOp === "sub" ? "true" : "false");
+    }
+    if (els.homeworkNumA) els.homeworkNumA.textContent = String(state.mathHomeworkA);
+    if (els.homeworkNumB) els.homeworkNumB.textContent = String(state.mathHomeworkB);
+  }
+  function adjustMathHomeworkValue(which, delta) {
+    if (which === "a") state.mathHomeworkA = safeHomeworkNumber(state.mathHomeworkA + delta);
+    if (which === "b") state.mathHomeworkB = safeHomeworkNumber(state.mathHomeworkB + delta);
+    syncMathHomeworkUI();
+  }
+  function homeworkQuestionFromState() {
+    const a = state.mathHomeworkA;
+    const b = state.mathHomeworkB;
+    if (state.mathHomeworkOp === "sub" && b > a) return null;
+    return {
+      type: state.mathHomeworkOp,
+      a,
+      b,
+      ans: state.mathHomeworkOp === "add" ? a + b : a - b
+    };
+  }
+  function clearMathHomeworkLine() {
+    hideNumberLine(els.homeworkNumberLineRoot);
+    if (els.homeworkLineTitle) els.homeworkLineTitle.textContent = "Set your question and tap Open number line";
+    if (els.homeworkLineFeedback) els.homeworkLineFeedback.textContent = "";
+  }
+  function renderMathHomeworkLine() {
+    const q = homeworkQuestionFromState();
+    if (!q) {
+      clearMathHomeworkLine();
+      if (els.homeworkLineFeedback) {
+        els.homeworkLineFeedback.textContent = "For subtraction, use a bigger first number (like 8 \u2212 5).";
+      }
+      return;
+    }
+    state.blocked = false;
+    renderNumberLine(els.homeworkNumberLineRoot, q);
+    if (els.homeworkLineTitle) els.homeworkLineTitle.textContent = numberLineTitle(q);
+    if (els.homeworkLineFeedback) els.homeworkLineFeedback.textContent = "";
+  }
+
   // src/spelling/setup.js
   function syncSpellingSetupUI() {
     const modeMap = {
@@ -3946,6 +4030,34 @@
       playToggleSound2();
       requestGoHome();
     });
+    if (els.mathHomeworkBtn) {
+      els.mathHomeworkBtn.addEventListener("click", () => {
+        playSelectSound();
+        clearMathHomeworkLine();
+        syncMathHomeworkUI();
+        showScreen("mathHelper");
+      });
+    }
+    if (els.homeworkBackBtn) {
+      els.homeworkBackBtn.addEventListener("click", () => {
+        playToggleSound2();
+        clearMathHomeworkLine();
+        showScreen("mathSetup");
+        syncMathSetupUI();
+      });
+    }
+    if (els.homeworkOpAdd) els.homeworkOpAdd.addEventListener("click", () => setMathHomeworkOp("add"));
+    if (els.homeworkOpSub) els.homeworkOpSub.addEventListener("click", () => setMathHomeworkOp("sub"));
+    if (els.homeworkAMinus10) els.homeworkAMinus10.addEventListener("click", () => adjustMathHomeworkValue("a", -10));
+    if (els.homeworkAMinus1) els.homeworkAMinus1.addEventListener("click", () => adjustMathHomeworkValue("a", -1));
+    if (els.homeworkAPlus1) els.homeworkAPlus1.addEventListener("click", () => adjustMathHomeworkValue("a", 1));
+    if (els.homeworkAPlus10) els.homeworkAPlus10.addEventListener("click", () => adjustMathHomeworkValue("a", 10));
+    if (els.homeworkBMinus10) els.homeworkBMinus10.addEventListener("click", () => adjustMathHomeworkValue("b", -10));
+    if (els.homeworkBMinus1) els.homeworkBMinus1.addEventListener("click", () => adjustMathHomeworkValue("b", -1));
+    if (els.homeworkBPlus1) els.homeworkBPlus1.addEventListener("click", () => adjustMathHomeworkValue("b", 1));
+    if (els.homeworkBPlus10) els.homeworkBPlus10.addEventListener("click", () => adjustMathHomeworkValue("b", 10));
+    if (els.homeworkOpenBtn) els.homeworkOpenBtn.addEventListener("click", () => renderMathHomeworkLine());
+    if (els.homeworkClearBtn) els.homeworkClearBtn.addEventListener("click", () => clearMathHomeworkLine());
     if (els.appNavHome) {
       els.appNavHome.addEventListener("click", () => requestGoHome());
     }
@@ -4080,6 +4192,7 @@
     loadMeasurePrefs();
     loadBigwordsPrefs();
     syncMathSetupUI();
+    syncMathHomeworkUI();
     syncSpellingSetupUI();
     syncMeasureSetupUI();
     syncBigwordsSetupUI();

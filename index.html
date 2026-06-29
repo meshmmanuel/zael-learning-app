@@ -104,7 +104,57 @@
 
     <div class="setup-actions">
       <button type="button" class="secondary-btn" id="math-back-btn">← Back</button>
+      <button type="button" class="secondary-btn" id="math-homework-btn">Homework helper 📚</button>
       <button type="button" class="primary-btn" id="math-start-btn">Let’s play! 🎮</button>
+    </div>
+  </div>
+
+  <div id="math-helper-screen" class="screen screen--setup math-helper-screen" style="display:none;">
+    <h2 class="screen-title">Homework helper 📚</h2>
+    <p class="screen-sub">Build a question like <strong>8 − 5</strong>, then count on the number line.</p>
+
+    <div class="math-helper-card">
+      <div class="math-helper-stepper">
+        <span class="math-helper-label">First number</span>
+        <div class="math-helper-stepper-controls">
+          <button type="button" class="math-helper-stepper-btn" id="homework-a-minus-10" aria-label="First number minus ten">−10</button>
+          <button type="button" class="math-helper-stepper-btn" id="homework-a-minus-1" aria-label="First number minus one">−1</button>
+          <div id="homework-num-a" class="math-helper-number-display" aria-live="polite">8</div>
+          <button type="button" class="math-helper-stepper-btn" id="homework-a-plus-1" aria-label="First number plus one">+1</button>
+          <button type="button" class="math-helper-stepper-btn" id="homework-a-plus-10" aria-label="First number plus ten">+10</button>
+        </div>
+      </div>
+
+      <div class="pick-row math-helper-op-row" role="group" aria-label="Operation">
+        <button type="button" class="pick-btn" id="homework-op-add" aria-pressed="false">+</button>
+        <button type="button" class="pick-btn" id="homework-op-sub" aria-pressed="true">−</button>
+      </div>
+
+      <div class="math-helper-stepper">
+        <span class="math-helper-label">Second number</span>
+        <div class="math-helper-stepper-controls">
+          <button type="button" class="math-helper-stepper-btn" id="homework-b-minus-10" aria-label="Second number minus ten">−10</button>
+          <button type="button" class="math-helper-stepper-btn" id="homework-b-minus-1" aria-label="Second number minus one">−1</button>
+          <div id="homework-num-b" class="math-helper-number-display" aria-live="polite">5</div>
+          <button type="button" class="math-helper-stepper-btn" id="homework-b-plus-1" aria-label="Second number plus one">+1</button>
+          <button type="button" class="math-helper-stepper-btn" id="homework-b-plus-10" aria-label="Second number plus ten">+10</button>
+        </div>
+      </div>
+
+      <div class="setup-actions">
+        <button type="button" class="secondary-btn" id="homework-clear-btn">Clear line</button>
+        <button type="button" class="primary-btn" id="homework-open-btn">Open number line</button>
+      </div>
+    </div>
+
+    <div class="emoji-zone">
+      <div class="emoji-zone-title" id="homework-line-title">Set your question and tap Open number line</div>
+      <div id="homework-number-line-root" class="number-line-root" hidden></div>
+      <p class="screen-hint" id="homework-line-feedback"></p>
+    </div>
+
+    <div class="setup-actions">
+      <button type="button" class="secondary-btn" id="homework-back-btn">← Back to math setup</button>
     </div>
   </div>
 
