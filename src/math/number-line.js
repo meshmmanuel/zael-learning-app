@@ -65,12 +65,19 @@ function createJumpArc(svg, arcsGroup, fromVal, toVal, win, padX, innerWidth, li
   return path;
 }
 
-export function renderNumberLine(root, q) {
+export function renderNumberLine(root, q, opts = {}) {
   if (!root || !q) return;
   cancelNumberLineAnimation();
+  const { wide = false } = opts;
   const win = getNumberLineWindow(q);
   const padX = 28;
-  const width = 320;
+  const ticks = Math.max(2, win.max - win.min + 1);
+  const maxLabelChars = Math.max(String(win.min).length, String(win.max).length);
+  const labelStepPx = (maxLabelChars * 10) + 14;
+  const baseStepPx = wide ? 30 : 22;
+  // Keep labels readable by expanding horizontal distance between ticks.
+  const stepPx = Math.max(baseStepPx, labelStepPx);
+  const width = Math.max(320, ((ticks - 1) * stepPx) + (padX * 2));
   const height = 120;
   const lineY = 72;
   const arcH = 22;
@@ -84,6 +91,7 @@ export function renderNumberLine(root, q) {
   root.hidden = false;
   root.setAttribute('role', 'group');
   root.setAttribute('aria-label', describeJumps(win));
+  root.classList.toggle('number-line-root--wide', wide);
 
   const wrap = document.createElement('div');
   wrap.className = 'number-line-wrap';
@@ -110,6 +118,7 @@ export function renderNumberLine(root, q) {
   svg.setAttribute('class', 'number-line-svg');
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
   svg.setAttribute('aria-hidden', 'true');
+  if (wide) svg.style.width = `${width}px`;
 
   const axis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
   axis.setAttribute('class', 'number-line-axis');

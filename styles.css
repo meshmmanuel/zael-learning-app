@@ -1258,9 +1258,11 @@ body * {
 .number-line-stage {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: clamp(6px, 2vw, 12px);
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
 }
 .number-line-side-btn {
   flex-shrink: 0;
@@ -1289,12 +1291,24 @@ body * {
   outline: 3px solid rgba(0,0,0,0.45);
   outline-offset: 3px;
 }
-.number-line-svg-wrap { flex: 1 1 auto; min-width: 0; max-width: min(360px, 100%); }
-.number-line-svg { width: 100%; height: auto; display: block; }
+.number-line-svg-wrap {
+  flex: 0 1 auto;
+  min-width: min(280px, 100%);
+  max-width: min(360px, 100%);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  justify-content: center;
+}
+.number-line-svg { width: 100%; height: auto; display: block; flex: 0 0 auto; }
 .number-line-axis { stroke: #222; stroke-width: 2.5; stroke-linecap: round; }
 .number-line-tick { stroke: #333; stroke-width: 2; }
 .number-line-label { font-family: 'Fredoka One', cursive; font-size: 14px; fill: #222; }
 .number-line-jump { stroke-linecap: round; }
+.number-line-root--wide .number-line-svg-wrap {
+  max-width: 100%;
+}
 
 .sub-hint { font-size: 13px; font-weight: 800; color: rgba(0,0,0,0.5); text-align: center; margin-top: 10px; }
 

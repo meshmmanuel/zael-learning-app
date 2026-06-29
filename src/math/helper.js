@@ -60,7 +60,7 @@ export function renderMathHomeworkLine() {
     return;
   }
   state.blocked = false;
-  renderNumberLine(els.homeworkNumberLineRoot, q);
+  renderNumberLine(els.homeworkNumberLineRoot, q, { wide: true });
   if (els.homeworkLineTitle) els.homeworkLineTitle.textContent = numberLineTitle(q);
   if (els.homeworkLineFeedback) els.homeworkLineFeedback.textContent = '';
 }
